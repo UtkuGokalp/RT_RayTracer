@@ -97,9 +97,9 @@ private:
 	/// <summary>
 	/// Create the acceleration structure of an instance
 	/// </summary>
-	/// <param name="vVertexBuffers">Pair of vertex buffers and vertex count</param>
+	/// <param name="vVertexBuffers">Pair of vertex buffers and vertex count. The vertex buffers are assumed to contain Vertex structures.</param>
 	/// <returns>AccelerationStructureBuffers for TLAS</returns>
-	AccelerationStructureBuffers CreateBottomLevelAS(std::vector<std::pair<ComPtr<Vertex>, uint32_t>> vVertexBuffers);
+	AccelerationStructureBuffers CreateBottomLevelAS(std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vVertexBuffers);
 
 	/// <summary>
 	/// Create the main acceleration structure that holds all instances of the scene
