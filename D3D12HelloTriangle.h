@@ -66,9 +66,14 @@ private:
 	ComPtr<ID3D12Fence> m_fence;
 	UINT64 m_fenceValue;
 
+	//Rendering mode flag
+	bool m_raster = true;
+
 	void LoadPipeline();
 	void LoadAssets();
 	void PopulateCommandList();
 	void WaitForPreviousFrame();
 	void CheckRaytracingSupport();
+
+	virtual void OnKeyUp(UINT8 key);
 };
