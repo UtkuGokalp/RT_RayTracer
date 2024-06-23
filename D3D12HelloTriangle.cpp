@@ -28,6 +28,9 @@ void D3D12HelloTriangle::OnInit()
     LoadPipeline();
     LoadAssets();
     CheckRaytracingSupport();
+    // Setup the acceleration structures (AS) for raytracing. When setting up
+    // geometry, each bottom-level AS has its own transform matrix.
+    CreateAccelerationStructures();
     // Command lists are created in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.
     ThrowIfFailed(m_commandList->Close());
@@ -445,4 +448,31 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
     m_topLevelASBuffers.pInstanceDesc = nv_helpers_dx12::CreateBuffer(m_device.Get(), instanceDescSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
     
     m_topLevelASGenerator.Generate(m_commandList.Get(), m_topLevelASBuffers.pScratch.Get(), m_topLevelASBuffers.pResult.Get(), m_topLevelASBuffers.pInstanceDesc.Get());
+}
+
+void D3D12HelloTriangle::CreateAccelerationStructures()
+{
+    // Build the BLAS from triangle vertex buffer
+    AccelerationStructureBuffers bottomLevelBuffers = CreateBottomLevelAS({ {m_vertexBuffer, 3} });
+
+    // Just one instance for now
+    // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
+    m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() } };
+    CreateTopLevelAS(m_instances);
+
+    //Flush the command list and wait for it to finish
+    m_commandList->Close();
+    ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+    m_commandQueue->ExecuteCommandLists(1, ppCommandLists);
+    m_fenceValue++;
+    m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
+
+    m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
+    WaitForSingleObject(m_fenceEvent, INFINITE);
+
+    // Once the command list is finished executing, reset it to be reused for rendering
+    ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
+
+    // Store the AS buffers. The rest of the buffers will be released once we exit the function
+    m_bottomLevelAS = bottomLevelBuffers.pResult;
 }
