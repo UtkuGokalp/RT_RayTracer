@@ -67,4 +67,10 @@
       <Filter>Assets\Shaders</Filter>
     </CustomBuild>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Common.hlsl" />
+    <FxCompile Include="Hit.hlsl" />
+    <FxCompile Include="Miss.hlsl" />
+    <FxCompile Include="RayGen.hlsl" />
+  </ItemGroup>
 </Project>
