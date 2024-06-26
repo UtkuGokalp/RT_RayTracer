@@ -497,3 +497,11 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     return rsg.Generate(m_device.Get(), true);
 }
+
+ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateMissSignature()
+{
+    //Miss shader only needs the hit info, which comes from the shaders themselves
+    //therefore it doesn't need any external data.
+    nv_helpers_dx12::RootSignatureGenerator rsg;
+    return rsg.Generate(m_device.Get(), true);
+}
