@@ -478,3 +478,14 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     // Store the AS buffers. The rest of the buffers will be released once we exit the function
     m_bottomLevelAS = bottomLevelBuffers.pResult;
 }
+
+ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
+{
+    //RayGen shader needs to access 2 resources: the raytracing output and the TLAS
+    nv_helpers_dx12::RootSignatureGenerator rsg;
+    //Add the external data needed for the shader program
+    rsg.AddHeapRangesParameter({ {0 /*u0*/, 1 /*1 descriptor*/, 0 /*use the implicit register space 0*/, D3D12_DESCRIPTOR_RANGE_TYPE_UAV /*UAV representing the output buffer*/, 0 /*heap slot where the UAV is defined*/},
+                                 {0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*TLAS*/, 1}});
+
+    return rsg.Generate(m_device.Get(), true);
+}
