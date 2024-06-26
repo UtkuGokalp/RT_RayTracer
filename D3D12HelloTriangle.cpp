@@ -13,6 +13,8 @@
 #include "D3D12HelloTriangle.h"
 #include "DXRHelper.h"
 #include "nv_helpers_dx12/BottomLevelASGenerator.h"
+#include "nv_helpers_dx12/RaytracingPipelineGenerator.h"
+#include "nv_helpers_dx12/RootSignatureGenerator.h"
 
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
     DXSample(width, height, name),
