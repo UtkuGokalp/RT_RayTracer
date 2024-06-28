@@ -33,6 +33,10 @@ void D3D12HelloTriangle::OnInit()
     // Setup the acceleration structures (AS) for raytracing. When setting up
     // geometry, each bottom-level AS has its own transform matrix.
     CreateAccelerationStructures();
+    // Create the raytracing pipeline, associating the shader code to symbol names
+    // and to their root signatures, and defining the amount of memory carried by
+    // rays (ray payload)
+    CreateRaytracingPipeline();
     // Command lists are created in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.
     ThrowIfFailed(m_commandList->Close());
@@ -504,4 +508,75 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateMissSignature()
     //therefore it doesn't need any external data.
     nv_helpers_dx12::RootSignatureGenerator rsg;
     return rsg.Generate(m_device.Get(), true);
+}
+
+void D3D12HelloTriangle::CreateRaytracingPipeline()
+{
+    // The raytracing pipeline binds the shader code, root signatures and pipeline
+    // characteristics in a single structure used by DXR to invoke the shaders and
+    // manage temporary memory during raytracing
+    nv_helpers_dx12::RayTracingPipelineGenerator pipeline(m_device.Get());
+
+    //First we compile the HLSL shaders to DXIL so that they can be used in GPUs.
+    //The raytracing pipeline contains all the shaders that may be executed during the raytracing process.
+    //The codes are separated semantically to raygen, miss and hit for clarity. Any code layout can be used.
+    m_rayGenLibrary = nv_helpers_dx12::CompileShaderLibrary(L"RayGen.hlsl");
+    m_missLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Miss.hlsl");
+    m_hitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Hit.hlsl");
+
+    //Secondly, we add the libraries to the pipeline
+    // In a way similar to DLLs, each library is associated with a number of
+    // exported symbols. This has to be done explicitly in the lines below. Note that a single library
+    // can contain an arbitrary number of symbols, whose semantic is given in HLSL using the [shader("xxx")] syntax
+    pipeline.AddLibrary(m_rayGenLibrary.Get(), { L"RayGen" });
+    pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
+    pipeline.AddLibrary(m_hitLibrary.Get(), { L"ClosestHit" });
+
+    //Third, we generate the root signatures of the shaders so that we can define which parameters and buffers will be accessed.
+    m_rayGenSignature = CreateRayGenSignature();
+    m_hitSignature = CreateHitSignature();
+    m_missSignature = CreateMissSignature();
+
+    //Fourth, we need to define what happens when a ray hits our geometry. There are three types of hits: Intersection shader, any-hit shader and a closest-hit shader.
+    //All these shaders are stored in what's called a HitGroup. An intersection shader is used when a ray hits a non-triangular geometry. Non-triangular geometries aren't used
+    //so this doesn't apply to this project. We can simply use the default intersection shader which is defined in DX12. Any-hit shader is used for any geometry that the ray hits.
+    //An empty any-hit shader is also defined in DX12 and that will be used for now as well. The closest-hit shader is the one that's called on the geometry that the ray first hits,
+    //therefore the one that is going to be actually visible to the camera. This isn't defined in DX12 and is defined by the developer. Right now, the Hit.hlsl shader defines the ClosestHit
+    //shader and that will be fed into the pipeline as the closest-hit shader.
+    pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
+
+    //Fifth, we need to associate the shaders imported from DXIL libraries with exactly one root signature.
+    // The following section associates the root signature to each shader. Note
+    // that we can explicitly show that some shaders share the same root signature
+    // (eg. Miss and ShadowMiss). Note that the hit shaders are now only referred
+    // to as hit groups, meaning that the underlying intersection, any-hit and
+    // closest-hit shaders share the same root signature.
+    pipeline.AddRootSignatureAssociation(m_rayGenSignature.Get(), { L"RayGen" });
+    pipeline.AddRootSignatureAssociation(m_missSignature.Get(), { L"Miss" });
+    pipeline.AddRootSignatureAssociation(m_hitSignature.Get(), { L"HitGroup" });
+
+    //Sixth, we need to define the memory sizes and recursions allowed to the shaders.
+    // The payload size defines the maximum size of the data carried by the rays,
+    // ie. the data exchanged between shaders, such as the HitInfo structure in the HLSL code.
+    // It is important to keep this value as low as possible as a too high value
+    // would result in unnecessary memory consumption and cache trashing.
+    pipeline.SetMaxPayloadSize(4 * sizeof(float)); // RGB + distance (float4 type in HLSL)
+
+    // Upon hitting a surface, DXR can provide several attributes to the hit.
+    // We just use the barycentric coordinates defined by the weights u,v
+    // of the last two vertices of the triangle. The actual barycentrics can
+    // be obtained using float3 barycentrics = float3(1.f-u-v, u, v);
+    pipeline.SetMaxAttributeSize(2 * sizeof(float)); // barycentric coordinates (float2 type in HLSL)
+
+    // The raytracing process can shoot rays from existing hit points, resulting
+    // in nested TraceRay calls. Our sample code traces only primary rays, which
+    // then requires a trace depth of 1. Note that this recursion depth should be
+    // kept to a minimum for best performance. Path tracing algorithms can be
+    // easily flattened into a simple loop in the ray generation.
+    pipeline.SetMaxRecursionDepth(1);
+
+    //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
+    //so that later we can access the shader pointers by name.
+    m_rtStateObject = pipeline.Generate();
+    ThrowIfFailed(m_rtStateObject->QueryInterface(IID_PPV_ARGS(&m_rtStateObjectProperties)));
 }
