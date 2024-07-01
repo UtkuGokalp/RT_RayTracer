@@ -131,4 +131,10 @@ private:
 
 	//Ray tracing pipeline state properties, retaining the shader identifiers to use in the Shader Binding Table
 	ComPtr<ID3D12StateObjectProperties> m_rtStateObjectProperties;
+
+	void CreateRaytracingOutputBuffer();
+	void CreateShaderResourceHeap();
+
+	ComPtr<ID3D12Resource> m_outputResource;
+	ComPtr<ID3D12DescriptorHeap> m_srvUavHeap;
 };
