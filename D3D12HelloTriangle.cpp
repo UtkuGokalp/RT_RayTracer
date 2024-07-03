@@ -43,6 +43,9 @@ void D3D12HelloTriangle::OnInit()
     // UAV), and create the heap referencing the resources used by the raytracing,
     // such as the acceleration structure
     CreateShaderResourceHeap();
+    // Create the shader binding table and indicating which shaders
+    // are invoked for each instance in the  AS
+    CreateShaderBindingTable();
     // Command lists are created in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.
     ThrowIfFailed(m_commandList->Close());
@@ -630,4 +633,45 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
     srvDesc.RaytracingAccelerationStructure.Location = m_topLevelASBuffers.pResult->GetGPUVirtualAddress();
     //Write the AS view in heap
     m_device->CreateShaderResourceView(nullptr, &srvDesc, srvHandle_cpu);
+}
+
+
+void D3D12HelloTriangle::CreateShaderBindingTable()
+{
+    //The resources are bound to shaders in this function.
+    
+    // The SBT helper class collects calls to Add*Program.  If called several
+    // times, the helper must be emptied before re-adding shaders.
+    m_sbtHelper.Reset();
+    // The pointer to the beginning of the heap is the only parameter required by
+    // shaders without root parameters
+    D3D12_GPU_DESCRIPTOR_HANDLE srvUavHeapHandle = m_srvUavHeap->GetGPUDescriptorHandleForHeapStart();
+    // The helper treats both root parameter pointers and heap pointers as void*, while DX12 uses the
+    // D3D12_GPU_DESCRIPTOR_HANDLE to define heap pointers. The pointer in this struct is a UINT64,
+    // which then has to be reinterpreted as a pointer.
+    auto heapPointer = reinterpret_cast<UINT64*>(srvUavHeapHandle.ptr);
+
+    // The ray generation only uses heap data
+    m_sbtHelper.AddRayGenerationProgram(L"RayGen", { &heapPointer });
+    // The miss and hit shaders do not access any external resources: instead they
+    // communicate their results through the ray payload
+    m_sbtHelper.AddMissProgram(L"Miss", {});
+
+    // Adding the triangle hit shader
+    m_sbtHelper.AddHitGroup(L"HitGroup", {});
+
+    // Compute the size of the SBT given the number of shaders and their parameters
+    uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
+
+    // Create the SBT on the upload heap. This is required as the helper will use
+    // mapping to write the SBT contents. After the SBT compilation it could be
+    // copied to the default heap for performance.
+    m_sbtStorage = nv_helpers_dx12::CreateBuffer(m_device.Get(), sbtSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+    
+    if (!m_sbtStorage)
+    {
+        throw std::logic_error("Could not allocate the shader binding table.");
+    }
+    // Compile the SBT from the shader and parameters info
+    m_sbtHelper.Generate(m_sbtStorage.Get(), m_rtStateObjectProperties.Get());
 }
