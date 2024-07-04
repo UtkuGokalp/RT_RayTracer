@@ -338,6 +338,69 @@ void D3D12HelloTriangle::PopulateCommandList()
     {
         const float clearColor[] = { 0.6f, 0.8f, 0.4f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        
+        // #DXR
+        // Bind the descriptor heap giving access to the top-level acceleration
+        // structure, as well as the raytracing output
+        std::vector<ID3D12DescriptorHeap*> heaps = { m_srvUavHeap.Get() };
+        m_commandList->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
+
+        // On the last frame, the raytracing output was used as a copy source, to
+        // copy its contents into the render target. Now we need to transition it to
+        // a UAV so that the shaders can write in it.
+        CD3DX12_RESOURCE_BARRIER transition = CD3DX12_RESOURCE_BARRIER::Transition(m_outputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        m_commandList->ResourceBarrier(1, &transition);
+        // Setup the raytracing task
+        D3D12_DISPATCH_RAYS_DESC desc = {};
+        // The layout of the SBT is as follows: ray generation shader, miss
+        // shaders, hit groups. As described in the CreateShaderBindingTable method,
+        // all SBT entries of a given type have the same size to allow a fixed stride.
+
+        // The ray generation shaders are always at the beginning of the SBT.
+        uint32_t rayGenSectionSizeInBytes = m_sbtHelper.GetRayGenSectionSize();
+        desc.RayGenerationShaderRecord.StartAddress = m_sbtStorage->GetGPUVirtualAddress();
+        desc.RayGenerationShaderRecord.SizeInBytes = rayGenSectionSizeInBytes;
+        
+        // The miss shaders are in the second SBT section, right after the ray
+        // generation shader. We have one miss shader for the camera rays and one
+        // for the shadow rays, so this section has a size of 2*m_sbtEntrySize. We
+        // also indicate the stride between the two miss shaders, which is the size
+        // of a SBT entry
+        uint32_t missSectionSizeInBytes = m_sbtHelper.GetMissSectionSize();
+        desc.MissShaderTable.StartAddress = m_sbtStorage->GetGPUVirtualAddress() + rayGenSectionSizeInBytes;
+        desc.MissShaderTable.SizeInBytes = missSectionSizeInBytes;
+        desc.MissShaderTable.StrideInBytes = m_sbtHelper.GetMissEntrySize();
+
+        // The hit groups section start after the miss shaders. In this sample we
+        // have one 1 hit group for the triangle
+        uint32_t hitGroupSectionSize = m_sbtHelper.GetHitGroupSectionSize();
+        desc.HitGroupTable.StartAddress = m_sbtStorage->GetGPUVirtualAddress() + rayGenSectionSizeInBytes + missSectionSizeInBytes;
+        desc.HitGroupTable.SizeInBytes = hitGroupSectionSize;
+        desc.HitGroupTable.StrideInBytes = m_sbtHelper.GetHitGroupEntrySize();
+
+        // Dimensions of the image to render, identical to a kernel launch dimension
+        desc.Width = GetWidth();
+        desc.Height = GetHeight();
+        desc.Depth = 1;
+
+        // Bind the raytracing pipeline
+        m_commandList->SetPipelineState1(m_rtStateObject.Get());
+        m_commandList->DispatchRays(&desc);
+
+        // The raytracing output needs to be copied to the actual render target used
+        // for display. For this, we need to transition the raytracing output from a
+        // UAV to a copy source, and the render target buffer to a copy destination.
+        // We can then do the actual copy, before transitioning the render target
+        // buffer into a render target, that will be then used to display the image
+        transition = CD3DX12_RESOURCE_BARRIER::Transition(m_outputResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        m_commandList->ResourceBarrier(1, &transition);
+        transition = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+        m_commandList->ResourceBarrier(1, &transition);
+
+        m_commandList->CopyResource(m_renderTargets[m_frameIndex].Get(), m_outputResource.Get());
+
+        transition = CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        m_commandList->ResourceBarrier(1, &transition);
     }
 
     // Indicate that the back buffer will now be used to present.
