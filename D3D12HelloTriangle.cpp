@@ -715,7 +715,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     auto heapPointer = reinterpret_cast<UINT64*>(srvUavHeapHandle.ptr);
 
     // The ray generation only uses heap data
-    m_sbtHelper.AddRayGenerationProgram(L"RayGen", { &heapPointer });
+    m_sbtHelper.AddRayGenerationProgram(L"RayGen", { heapPointer });
     // The miss and hit shaders do not access any external resources: instead they
     // communicate their results through the ray payload
     m_sbtHelper.AddMissProgram(L"Miss", {});
