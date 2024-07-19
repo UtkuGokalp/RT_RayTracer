@@ -571,6 +571,7 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     //Hit shader only needs the hit info, which comes from the shaders themselves
     //therefore it doesn't need any external data.
     nv_helpers_dx12::RootSignatureGenerator rsg;
+    rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV);
     return rsg.Generate(m_device.Get(), true);
 }
 
@@ -721,7 +722,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"Miss", {});
 
     // Adding the triangle hit shader
-    m_sbtHelper.AddHitGroup(L"HitGroup", {});
+    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_vertexBuffer->GetGPUVirtualAddress() });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
