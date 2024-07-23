@@ -333,7 +333,7 @@ void D3D12HelloTriangle::PopulateCommandList()
     // #DXR
     if (m_raster)
     {
-        const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+        const float clearColor[] = { 0.03f, 0.35f, 0.43f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
