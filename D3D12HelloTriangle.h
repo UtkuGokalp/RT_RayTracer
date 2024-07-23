@@ -106,7 +106,8 @@ private:
 	/// Create the main acceleration structure that holds all instances of the scene
 	/// </summary>
 	/// <param name="instances">Pair of BLAS and transform</param>
-	void CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>> &instances);
+	/// <param name="updateOnly">Whether to build TLAS from scratch or just update the existing one</param>
+	void CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>> &instances, bool updateOnly = false);
 
 	/// <summary>
 	/// Create all acceleration structures, bottom and top
@@ -142,4 +143,7 @@ private:
 	void CreateShaderBindingTable();
 	nv_helpers_dx12::ShaderBindingTableGenerator m_sbtHelper;
 	ComPtr<ID3D12Resource> m_sbtStorage;
+
+	// #DXR Extra - Refitting
+	uint32_t m_time = 0;
 };
