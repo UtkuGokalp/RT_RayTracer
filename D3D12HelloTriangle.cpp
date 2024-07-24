@@ -754,3 +754,23 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // Compile the SBT from the shader and parameters info
     m_sbtHelper.Generate(m_sbtStorage.Get(), m_rtStateObjectProperties.Get());
 }
+
+void D3D12HelloTriangle::CreateCameraBuffer()
+{
+    uint32_t nbMatrix = 4; //view, perspective, viewInv, perspectiveInv
+    m_cameraBufferSize = nbMatrix * sizeof(XMMATRIX);
+
+    // Create the constant buffer for all matrices
+    m_cameraBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), m_cameraBufferSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+    //Descriptor heap that will be used by the rasterization shaders
+    m_constHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+
+    // Describe and create the constant buffer view.
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+    cbvDesc.BufferLocation = m_cameraBuffer->GetGPUVirtualAddress();
+    cbvDesc.SizeInBytes = m_cameraBufferSize;
+
+    // Get a handle to the heap memory on the CPU side, to be able to write the descriptors directly
+    D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = m_constHeap->GetCPUDescriptorHandleForHeapStart();
+    m_device->CreateConstantBufferView(&cbvDesc, srvHandle);
+}

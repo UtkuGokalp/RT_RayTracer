@@ -144,6 +144,18 @@ private:
 	nv_helpers_dx12::ShaderBindingTableGenerator m_sbtHelper;
 	ComPtr<ID3D12Resource> m_sbtStorage;
 
+	// #DXR Extra: Perspective Camera	
+	/// <summary>
+	/// The camera buffer is a constant buffer that stores the transform matrices of the camera, for use by both the rasterization and raytracing.
+	/// This method allocates the buffer where the matrices will be copied.
+	/// For the sake of code clarity, it also creates a heap containing only this buffer, to use in the rasterization path.
+	/// </summary>
+	void CreateCameraBuffer();
+	void UpdateCameraBuffer();
+	ComPtr<ID3D12Resource> m_cameraBuffer;
+	ComPtr<ID3D12DescriptorHeap> m_constHeap; //Camera buffer reference for rasterized rendering
+	uint32_t m_cameraBufferSize = 0;
+
 	// #DXR Extra - Refitting
 	uint32_t m_time = 0;
 };
