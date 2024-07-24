@@ -151,6 +151,9 @@ private:
 	/// For the sake of code clarity, it also creates a heap containing only this buffer, to use in the rasterization path.
 	/// </summary>
 	void CreateCameraBuffer();
+	/// <summary>
+	/// Creates and copies the viewmodel and perspective matrices of the camera
+	/// </summary>
 	void UpdateCameraBuffer();
 	ComPtr<ID3D12Resource> m_cameraBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_constHeap; //Camera buffer reference for rasterized rendering
