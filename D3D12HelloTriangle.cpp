@@ -691,8 +691,8 @@ void D3D12HelloTriangle::CreateRaytracingOutputBuffer()
 //Create the main heap used by shaders, which allows access to the raytracing output and the TLAS
 void D3D12HelloTriangle::CreateShaderResourceHeap()
 {
-    //2 entries needed: 1 UAV for the raytracing output and 1 SRV for TLAS
-    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 2, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    //3 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS and 1 CBV for camera matrices
+    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     //Get a handle to te heap memory on the CPU side so that descriptors can be directly written to
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle_cpu = m_srvUavHeap->GetCPUDescriptorHandleForHeapStart();
@@ -712,6 +712,15 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
     srvDesc.RaytracingAccelerationStructure.Location = m_topLevelASBuffers.pResult->GetGPUVirtualAddress();
     //Write the AS view in heap
     m_device->CreateShaderResourceView(nullptr, &srvDesc, srvHandle_cpu);
+
+    // #DXR Extra: Perspective Camera
+    // Add the constant buffer for the camera after the TLAS
+    srvHandle_cpu.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    // Describe and create a constant buffer view for the camera
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+    cbvDesc.BufferLocation = m_cameraBuffer->GetGPUVirtualAddress();
+    cbvDesc.SizeInBytes = m_cameraBufferSize;
+    m_device->CreateConstantBufferView(&cbvDesc, srvHandle_cpu);
 }
 
 
