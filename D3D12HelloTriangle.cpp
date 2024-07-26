@@ -15,6 +15,9 @@
 #include "nv_helpers_dx12/BottomLevelASGenerator.h"
 #include "nv_helpers_dx12/RaytracingPipelineGenerator.h"
 #include "nv_helpers_dx12/RootSignatureGenerator.h"
+#include "glm/gtc/type_ptr.hpp"
+#include "manipulator.h"
+#include "windowsx.h"
 
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
     DXSample(width, height, name),
@@ -27,6 +30,10 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
 
 void D3D12HelloTriangle::OnInit()
 {
+    //Setup for camera movement and rotation
+    nv_helpers_dx12::CameraManip.setWindowSize(GetWidth(), GetHeight());
+    nv_helpers_dx12::CameraManip.setLookat(glm::vec3(1.5f, 1.5f, 1.5f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+
     LoadPipeline();
     LoadAssets();
     CheckRaytracingSupport();
@@ -816,10 +823,8 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
     // interactions The lookat and perspective matrices used for rasterization are
     // defined to transform world-space vertices into a [0,1]x[0,1]x[0,1] camera
     // space
-    XMVECTOR Eye = XMVectorSet(1.5f, 1.5f, 1.5f, 0.0f); //Where the camera is
-    XMVECTOR At  = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f); //Where is the camera looking
-    XMVECTOR Up  = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); //Up direction
-    matrices[0] = XMMatrixLookAtRH(Eye, At, Up);
+    const glm::mat4& mat = nv_helpers_dx12::CameraManip.getMatrix();
+    memcpy(&matrices[0].r->m128_f32[0], glm::value_ptr(mat), 16 * sizeof(float));
 
     float fovAngleY_degrees = 45.0f;
     float fovAngleY = fovAngleY_degrees * XM_PI / 180.0f; //Convert fov angle degrees to radians
@@ -838,3 +843,28 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
     memcpy(pData, matrices.data(), m_cameraBufferSize);
     m_cameraBuffer->Unmap(0, nullptr);
 }
+
+void D3D12HelloTriangle::OnButtonDown(UINT32 lParam)
+{
+    nv_helpers_dx12::CameraManip.setMousePosition(-GET_X_LPARAM(lParam), -GET_Y_LPARAM(lParam));
+}
+
+void D3D12HelloTriangle::OnMouseMove(UINT8 wParam, UINT32 lParam)
+{
+    using nv_helpers_dx12::Manipulator;
+    Manipulator::Inputs inputs;
+    inputs.lmb = wParam & MK_LBUTTON;
+    inputs.mmb = wParam & MK_MBUTTON;
+    inputs.rmb = wParam & MK_RBUTTON;
+    if (!inputs.lmb && !inputs.rmb && !inputs.mmb)
+    {
+        return; //No mouse buttons pressed
+    }
+
+    inputs.ctrl = GetAsyncKeyState(VK_CONTROL);
+    inputs.shift = GetAsyncKeyState(VK_SHIFT);
+    inputs.alt = GetAsyncKeyState(VK_MENU);
+
+    CameraManip.mouseMove(-GET_X_LPARAM(lParam), -GET_Y_LPARAM(lParam), inputs);
+}
+

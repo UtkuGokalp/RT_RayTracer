@@ -161,4 +161,8 @@ private:
 
 	// #DXR Extra - Refitting
 	uint32_t m_time = 0;
+
+	// #DXR Extra: Perspective Camera++
+	void OnButtonDown(UINT32);
+	void OnMouseMove(UINT8, UINT32);
 };
