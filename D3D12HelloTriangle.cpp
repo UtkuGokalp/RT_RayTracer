@@ -786,6 +786,11 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
 
 void D3D12HelloTriangle::CreateCameraBuffer()
 {
+    //The 4 matrices are the classical ones used in the rasterization process, projecting the world - space positions of the vertices into a unit cube.
+    //However, to obtain a raytracing result consistent with the rasterization, we need to do the opposite:
+    //the rays are initialized as if we had an orthographic camera located at the origin.
+    //We then need to transform the ray origin and direction into world space, using the inverse view and projection matrices.
+    //The camera buffer stores all 4 matrices, where the raster and raytracing paths will access only the ones needed.
     uint32_t nbMatrix = 4; //view, perspective, viewInv, perspectiveInv
     m_cameraBufferSize = nbMatrix * sizeof(XMMATRIX);
 
