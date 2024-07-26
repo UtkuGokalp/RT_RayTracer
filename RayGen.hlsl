@@ -16,6 +16,15 @@ RaytracingAccelerationStructure SceneBVH : register(t0);
 
 // In order to declare a constant buffer (CBV), the letter c is used
 
+// #DXR Extra: Perspective Camera
+cbuffer CameraParams : register(b0)
+{
+    float4x4 view;
+    float4x4 projection;
+    float4x4 viewInv;
+    float4x4 projectionInv;
+}
+
 [shader("raygeneration")]
 void RayGen()
 {
@@ -29,10 +38,14 @@ void RayGen()
     float2 dims = float2(DispatchRaysDimensions().xy);
     //d is the floating point pixel coordinates, normalized on [0, 1] X [0, 1]
     float2 d = ((launchIndex.xy + 0.5f) / dims.xy) * 2.0f - 1.0f;
+    
+    // #DXR Extra: Perspective Camera
+    float aspectRatio = dims.x / dims.y;
     //Define a ray
     RayDesc ray;
-    ray.Origin = float3(d.x, -d.y, 1); //y component is inverted in order to match the image indexing convention of DirectX.
-    ray.Direction = float3(0, 0, -1);
+    ray.Origin = mul(viewInv, float4(0, 0, 0, 1));
+    float4 target = mul(projectionInv, float4(d.x, -d.y, 1, 1)); //y component is inverted in order to match the image indexing convention of DirectX.
+    ray.Direction = mul(viewInv, float4(target.xyz, 0));
     ray.TMin = 0; //Equivalent of the camera near clipping plane used in rasterization, 0 is valid for ray tracing.
     ray.TMax = 100000; //Max length of the ray, equivalent to the far clipping plane used in rasterization.
     TraceRay(
