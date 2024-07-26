@@ -15,11 +15,23 @@ struct PSInput
 	float4 color : COLOR;
 };
 
+//The necessary matrices for rasterizer are in the beginning of the
+//camera buffer, so we only declare those
+cbuffer CameraParams : register(b0)
+{
+    float4x4 view;
+    float4x4 projection;
+}
+
 PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
 {
 	PSInput result;
 
-	result.position = position;
+	// #DXR Extra: Perspective Camera
+    float4 pos = position;
+    pos = mul(view, pos);
+    pos = mul(projection, pos);
+	result.position = pos;
 	result.color = color;
 
 	return result;

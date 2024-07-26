@@ -39,6 +39,9 @@ void D3D12HelloTriangle::OnInit()
     CreateRaytracingPipeline();
     // Allocate the buffer storing the raytracing output
     CreateRaytracingOutputBuffer();
+    // #DXR Extra: Perspective Camera
+    // Create a buffer to store the modelview and perspective camera matrices
+    CreateCameraBuffer();
     // Create the buffer containing the raytracing result (always output in a
     // UAV), and create the heap referencing the resources used by the raytracing,
     // such as the acceleration structure
@@ -161,10 +164,19 @@ void D3D12HelloTriangle::LoadPipeline()
 // Load the sample assets.
 void D3D12HelloTriangle::LoadAssets()
 {
-    // Create an empty root signature.
+    // #DXR Extra: Perspective Camera
+    // The root signature describes which data is accessed by the shader. The camera matrices are held
+    // in a constant buffer, itself referenced the heap. To do this we reference a range in the heap,
+    // and use that range as the sole parameter of the shader. The camera buffer is associated in the
+    // index 0, making it accessible in the shader in the b0 register.
     {
+        CD3DX12_ROOT_PARAMETER constantParameter;
+        CD3DX12_DESCRIPTOR_RANGE range;
+        range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+        constantParameter.InitAsDescriptorTable(1, &range, D3D12_SHADER_VISIBILITY_ALL);
+
         CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-        rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+        rootSignatureDesc.Init(1, &constantParameter, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
         ComPtr<ID3DBlob> signature;
         ComPtr<ID3DBlob> error;
@@ -274,6 +286,8 @@ void D3D12HelloTriangle::LoadAssets()
 // Update frame-based values. This method is called before each render.
 void D3D12HelloTriangle::OnUpdate()
 {
+    // #DXR Extra: Perspective Camera
+    UpdateCameraBuffer();
     // #DXR Extra - Refitting
     // Increment the time counter at each frame, and update the corresponding instance matrix of the
     // first triangle to animate its position
@@ -333,6 +347,11 @@ void D3D12HelloTriangle::PopulateCommandList()
     // #DXR
     if (m_raster)
     {
+        // #DXR Extra: Perspective Camera
+        std::vector<ID3D12DescriptorHeap*> heaps = { m_constHeap.Get() };
+        m_commandList->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
+        // set the root descriptor table 0 to the constant buffer descriptor heap
+        m_commandList->SetGraphicsRootDescriptorTable(0, m_constHeap->GetGPUDescriptorHandleForHeapStart());
         const float clearColor[] = { 0.03f, 0.35f, 0.43f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -576,7 +595,8 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     //Add the external data needed for the shader program
     rsg.AddHeapRangesParameter({ {0 /*u0*/, 1 /*1 descriptor*/, 0 /*use the implicit register space 0*/, D3D12_DESCRIPTOR_RANGE_TYPE_UAV /*UAV representing the output buffer*/, 0 /*heap slot where the UAV is defined*/},
-                                 {0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*TLAS*/, 1}});
+                                 {0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*TLAS*/, 1},
+                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2}});
 
     return rsg.Generate(m_device.Get(), true);
 }
