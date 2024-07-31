@@ -89,3 +89,13 @@ void DXSample::ParseCommandLineArgs(WCHAR* argv[], int argc)
 		}
 	}
 }
+
+void DXSample::OnMouseMove(UINT8, UINT32)
+{
+
+}
+
+void DXSample::OnButtonDown(UINT32)
+{
+
+}
