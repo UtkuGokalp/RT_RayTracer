@@ -576,7 +576,9 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
 
     // Just one instance for now
     // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
-    m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() } };
+    m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() },
+                    { bottomLevelBuffers.pResult, XMMatrixTranslation(-0.6f, 0.0f, 0.0f) },
+                    { bottomLevelBuffers.pResult, XMMatrixTranslation(+0.6f, 0.0f, 0.0f) } };
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
