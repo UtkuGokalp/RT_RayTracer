@@ -165,4 +165,12 @@ private:
 	// #DXR Extra: Perspective Camera++
 	void OnButtonDown(UINT32) override;
 	void OnMouseMove(UINT8, UINT32) override;
+
+	// #DXR Extra: Per-Instance Data
+	ComPtr<ID3D12Resource> m_planeBuffer;
+	D3D12_VERTEX_BUFFER_VIEW m_planeBufferView;
+	/// <summary>
+	/// Creates a vertex buffer for the plane.
+	/// </summary>
+	void CreatePlaneVB();
 };
