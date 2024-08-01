@@ -269,6 +269,9 @@ void D3D12HelloTriangle::LoadAssets()
         m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
         m_vertexBufferView.StrideInBytes = sizeof(Vertex);
         m_vertexBufferView.SizeInBytes = vertexBufferSize;
+        // #DXR - Per Instance
+        // Create a vertex buffer for a ground plane, similarly to the triangle definition above
+        CreatePlaneVB();
     }
 
     // Create synchronization objects and wait until assets have been uploaded to the GPU.
@@ -364,6 +367,8 @@ void D3D12HelloTriangle::PopulateCommandList()
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
         m_commandList->DrawInstanced(3, 1, 0, 0);
+        m_commandList->IASetVertexBuffers(0, 1, &m_planeBufferView);
+        m_commandList->DrawInstanced(6, 1, 0, 0);
     }
     else
     {
@@ -573,12 +578,14 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
 {
     // Build the BLAS from triangle vertex buffer
     AccelerationStructureBuffers bottomLevelBuffers = CreateBottomLevelAS({ {m_vertexBuffer, 3} });
+    AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
 
-    // Just one instance for now
+    // 3 instances of the triangle + a plane
     // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
     m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() },
                     { bottomLevelBuffers.pResult, XMMatrixTranslation(-0.6f, 0.0f, 0.0f) },
-                    { bottomLevelBuffers.pResult, XMMatrixTranslation(+0.6f, 0.0f, 0.0f) } };
+                    { bottomLevelBuffers.pResult, XMMatrixTranslation(+0.6f, 0.0f, 0.0f) },
+                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) }};
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
