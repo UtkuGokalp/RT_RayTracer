@@ -626,6 +626,14 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     //therefore it doesn't need any external data.
     nv_helpers_dx12::RootSignatureGenerator rsg;
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV);
+    // #DXR Extra: Per-Instance Data
+    // The vertex colors may differ for each instance, so it is not possible to
+    // point to a single buffer in the heap. Instead we use the concept of root
+    // parameters, which are defined directly by a pointer in memory. In the
+    // shader binding table we will associate each hit shader instance with its
+    // constant buffer. Here we bind the buffer to the first slot, accessible in
+    // HLSL as register(b0)
+    rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
     return rsg.Generate(m_device.Get(), true);
 }
 
@@ -785,6 +793,9 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
 
     // Adding the triangle hit shader
     m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_vertexBuffer->GetGPUVirtualAddress() });
+    // #DXR Extra: Per-Instance Data
+    // Adding the triangle hit shader and constant buffer data
+    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_globalConstantBuffer->GetGPUVirtualAddress() });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
