@@ -173,4 +173,7 @@ private:
 	/// Creates a vertex buffer for the plane.
 	/// </summary>
 	void CreatePlaneVB();
+
+	ComPtr<ID3D12Resource>m_globalConstantBuffer;
+	void CreateGlobalConstantBuffer();
 };
