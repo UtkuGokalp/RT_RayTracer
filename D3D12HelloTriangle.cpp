@@ -305,7 +305,7 @@ void D3D12HelloTriangle::OnUpdate()
     // Increment the time counter at each frame, and update the corresponding instance matrix of the
     // first triangle to animate its position
     //m_time++;
-    m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
+    //m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
 }
 
 // Render the scene.
@@ -377,12 +377,12 @@ void D3D12HelloTriangle::PopulateCommandList()
     {
         const float clearColor[] = { 0.6f, 0.8f, 0.4f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        
+
         // #DXR Extra - Refitting
         // Refit the top-level acceleration structure to account for the new transform matrix of the
         // triangle. Note that the build contains a barrier, hence we can do the rendering in the
         // same command list
-        CreateTopLevelAS(m_instances, true);
+        //CreateTopLevelAS(m_instances, true);
 
         // #DXR
         // Bind the descriptor heap giving access to the top-level acceleration
@@ -405,7 +405,7 @@ void D3D12HelloTriangle::PopulateCommandList()
         uint32_t rayGenSectionSizeInBytes = m_sbtHelper.GetRayGenSectionSize();
         desc.RayGenerationShaderRecord.StartAddress = m_sbtStorage->GetGPUVirtualAddress();
         desc.RayGenerationShaderRecord.SizeInBytes = rayGenSectionSizeInBytes;
-        
+
         // The miss shaders are in the second SBT section, right after the ray
         // generation shader. We have one miss shader for the camera rays and one
         // for the shadow rays, so this section has a size of 2*m_sbtEntrySize. We
@@ -526,7 +526,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
     AccelerationStructureBuffers buffers;
     buffers.pScratch = nv_helpers_dx12::CreateBuffer(m_device.Get(), scratchSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, nv_helpers_dx12::kDefaultHeapProps);
     buffers.pResult = nv_helpers_dx12::CreateBuffer(m_device.Get(), resultSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, nv_helpers_dx12::kDefaultHeapProps);
-    
+
     // Build the acceleration structure. Note that this call integrates a barrier
     // on the generated AS, so that it can be used to compute a top-level AS right
     // after this method.
@@ -573,7 +573,7 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
         // mapping, so the buffer has to be allocated on the upload heap.
         m_topLevelASBuffers.pInstanceDesc = nv_helpers_dx12::CreateBuffer(m_device.Get(), instanceDescSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
     }
-    
+
     m_topLevelASGenerator.Generate(m_commandList.Get(), m_topLevelASBuffers.pScratch.Get(), m_topLevelASBuffers.pResult.Get(), m_topLevelASBuffers.pInstanceDesc.Get(), updateOnly, m_topLevelASBuffers.pResult.Get());
 }
 
@@ -588,7 +588,7 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() },
                     { bottomLevelBuffers.pResult, XMMatrixTranslation(-0.6f, 0.0f, 0.0f) },
                     { bottomLevelBuffers.pResult, XMMatrixTranslation(+0.6f, 0.0f, 0.0f) },
-                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) }};
+                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) } };
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -615,7 +615,7 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
     //Add the external data needed for the shader program
     rsg.AddHeapRangesParameter({ {0 /*u0*/, 1 /*1 descriptor*/, 0 /*use the implicit register space 0*/, D3D12_DESCRIPTOR_RANGE_TYPE_UAV /*UAV representing the output buffer*/, 0 /*heap slot where the UAV is defined*/},
                                  {0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*TLAS*/, 1},
-                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2}});
+                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2} });
 
     return rsg.Generate(m_device.Get(), true);
 }
@@ -749,7 +749,7 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
     m_device->CreateUnorderedAccessView(m_outputResource.Get(), nullptr, &uavDesc, srvHandle_cpu);
-    
+
     //Add the TLAS SRV right after the raytracing output buffer
     srvHandle_cpu.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -773,7 +773,7 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
 void D3D12HelloTriangle::CreateShaderBindingTable()
 {
     //The resources are bound to shaders in this function.
-    
+
     // The SBT helper class collects calls to Add*Program.  If called several
     // times, the helper must be emptied before re-adding shaders.
     m_sbtHelper.Reset();
@@ -804,7 +804,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // mapping to write the SBT contents. After the SBT compilation it could be
     // copied to the default heap for performance.
     m_sbtStorage = nv_helpers_dx12::CreateBuffer(m_device.Get(), sbtSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
-    
+
     if (!m_sbtStorage)
     {
         throw std::logic_error("Could not allocate the shader binding table.");
@@ -851,7 +851,7 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
     float fovAngleY_degrees = 45.0f;
     float fovAngleY = fovAngleY_degrees * XM_PI / 180.0f; //Convert fov angle degrees to radians
     matrices[1] = XMMatrixPerspectiveFovRH(fovAngleY, m_aspectRatio, 0.1f, 1000.0f);
-    
+
     // Raytracing has to do the contrary of rasterization: rays are defined in
     // camera space, and are transformed into world space. To do this, we need to
     // store the inverse matrices as well.
@@ -903,7 +903,7 @@ void D3D12HelloTriangle::CreatePlaneVB()
         {{01.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}  // 4
     };
     const UINT planeBufferSize = sizeof(planeVertices);
-    
+
     // Note: using upload heaps to transfer static data like vert buffers is not
     // recommended. Every time the GPU needs it, the upload heap will be
     // marshalled over. Please read up on Default Heap usage. An upload heap is
@@ -912,7 +912,7 @@ void D3D12HelloTriangle::CreatePlaneVB()
     CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC bufferResource = CD3DX12_RESOURCE_DESC::Buffer(planeBufferSize);
     ThrowIfFailed(m_device->CreateCommittedResource(&heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_planeBuffer)));
-    
+
     // Copy the triangle data to the vertex buffer.
     UINT8* pVertexDataBegin;
     CD3DX12_RANGE readRange(0, 0); //This resource is not intended to be read from the CPU, so its read size is 0.

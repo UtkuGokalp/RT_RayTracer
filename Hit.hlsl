@@ -9,6 +9,14 @@ struct STriVertex
 
 StructuredBuffer<STriVertex> BTriVertex : register(t0);
 
+// #DXR Extra: Per-Instance Data
+cbuffer Colors : register(b0)
+{
+    float3 A[3];
+    float3 B[3];
+    float3 C[3];
+}
+
 [shader("closesthit")] 
 void ClosestHit(inout HitInfo payload, Attributes attrib) 
 {
@@ -17,10 +25,18 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
                                  attrib.bary.y);
     
     uint vertId = 3 * PrimitiveIndex();
-    float3 hitColor = float3(0.7f, 0.7f, 0.7f);
-                      //BTriVertex[vertId + 0].color * barycentrics.x +
-                      //BTriVertex[vertId + 1].color * barycentrics.y +
-                      //BTriVertex[vertId + 2].color * barycentrics.z;
+    float3 hitColor = BTriVertex[vertId + 0].color * barycentrics.x +
+                      BTriVertex[vertId + 1].color * barycentrics.y +
+                      BTriVertex[vertId + 2].color * barycentrics.z;
+    
+    // #DXR Extra: Per-Instance Data
+    hitColor = float3(0.6, 0.7, 0.6);
+    // Shade only the first 3 instances (triangles)
+    if (InstanceID() < 3)
+    {
+        //hitColor = A[InstanceID()] * barycentrics.x + B[InstanceID()] * barycentrics.y + C[InstanceID()] * barycentrics.z;
+    }
+    
     
     switch (InstanceID()) //This method returns the ID that is passed to the AddInstance function used in CreateTopLevelAS function.
     {
@@ -34,6 +50,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
             hitColor = float3(0.1f, 0.95f, 0.9f);
             break;
     }
+    
     
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
