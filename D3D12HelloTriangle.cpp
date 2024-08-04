@@ -46,7 +46,7 @@ void D3D12HelloTriangle::OnInit()
     CreateRaytracingPipeline();
     // #DXR Extra: Per-Instance Data
     // Create a constant buffer, with a color for each vertex of the triangle, for each triangle instance
-    //CreateGlobalConstantBuffer();
+    CreateGlobalConstantBuffer();
     // Allocate the buffer storing the raytracing output
     CreateRaytracingOutputBuffer();
     // #DXR Extra: Perspective Camera
@@ -537,7 +537,6 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
 
 void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>>& instances, bool updateOnly)
 {
-
     if (!updateOnly)
     {
         // Create the main acceleration structure that holds all instances of the scene.
@@ -665,7 +664,8 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // can contain an arbitrary number of symbols, whose semantic is given in HLSL using the [shader("xxx")] syntax
     pipeline.AddLibrary(m_rayGenLibrary.Get(), { L"RayGen" });
     pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
-    pipeline.AddLibrary(m_hitLibrary.Get(), { L"ClosestHit" });
+    //L"PlaneClosestHit" is from #DXR Extra: Per-Instance Data
+    pipeline.AddLibrary(m_hitLibrary.Get(), { L"ClosestHit", L"PlaneClosestHit" });
 
     //Third, we generate the root signatures of the shaders so that we can define which parameters and buffers will be accessed.
     m_rayGenSignature = CreateRayGenSignature();
@@ -679,6 +679,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     //therefore the one that is going to be actually visible to the camera. This isn't defined in DX12 and is defined by the developer. Right now, the Hit.hlsl shader defines the ClosestHit
     //shader and that will be fed into the pipeline as the closest-hit shader.
     pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
+    pipeline.AddHitGroup(L"PlaneHitGroup", L"PlaneClosestHit");
 
     //Fifth, we need to associate the shaders imported from DXIL libraries with exactly one root signature.
     // The following section associates the root signature to each shader. Note
@@ -688,7 +689,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // closest-hit shaders share the same root signature.
     pipeline.AddRootSignatureAssociation(m_rayGenSignature.Get(), { L"RayGen" });
     pipeline.AddRootSignatureAssociation(m_missSignature.Get(), { L"Miss" });
-    pipeline.AddRootSignatureAssociation(m_hitSignature.Get(), { L"HitGroup" });
+    pipeline.AddRootSignatureAssociation(m_hitSignature.Get(), { L"HitGroup", L"PlaneHitGroup" });
 
     //Sixth, we need to define the memory sizes and recursions allowed to the shaders.
     // The payload size defines the maximum size of the data carried by the rays,
@@ -792,7 +793,9 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"Miss", {});
 
     // Adding the triangle hit shader
-    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_vertexBuffer->GetGPUVirtualAddress() });
+    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_vertexBuffer->GetGPUVirtualAddress(), (void*)m_globalConstantBuffer->GetGPUVirtualAddress() });
+    // #DXR Extra: Per-Instance Data
+    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", {});
     // #DXR Extra: Per-Instance Data
     // Adding the triangle hit shader and constant buffer data
     //m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_globalConstantBuffer->GetGPUVirtualAddress() });
@@ -926,37 +929,37 @@ void D3D12HelloTriangle::CreatePlaneVB()
     m_planeBufferView.SizeInBytes = planeBufferSize;
 }
 
-//void D3D12HelloTriangle::CreateGlobalConstantBuffer()
-//{
-//    // Due to HLSL packing rules, we create the CB with 9 float4 (each needs to start on a 16-byte boundary)
-//    XMVECTOR bufferData[] =
-//    {
-//        //A matrix
-//        XMVECTOR{1.0f, 0.0f, 0.0f, 1.0f},
-//        XMVECTOR{0.7f, 0.4f, 0.0f, 1.0f},
-//        XMVECTOR{0.4f, 0.7f, 0.0f, 1.0f},
-//
-//        //B matrix
-//        XMVECTOR{0.0f, 1.0f, 0.0f, 1.0f},
-//        XMVECTOR{0.0f, 0.7f, 0.4f, 1.0f},
-//        XMVECTOR{0.0f, 0.4f, 0.7f, 1.0f},
-//
-//        //C matrix
-//        XMVECTOR{0.0f, 0.0f, 1.0f, 1.0f},
-//        XMVECTOR{0.4f, 0.0f, 0.7f, 1.0f},
-//        XMVECTOR{0.7f, 0.0f, 0.4f, 1.0f},
-//    };
-//
-//    // Create our buffer
-//    m_globalConstantBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), sizeof(bufferData), D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
-//
-//    // Copy CPU memory to GPU
-//    uint8_t* pData;
-//    //ID3D12Resource.Map() maps a pointer created to the GPU side, meaning that pointer now represents
-//    //an address in GPU. Then, memcpy allows us to copy arbitrary data that we have on the CPU side to the GPU
-//    //using the mapped pointer. Finally, since we don't need the GPU pointer anymore (and probably for preventing memory leaks)
-//    //we use ID3D12Resource.Unmap(), unmaps the pointer from the GPU side.
-//    ThrowIfFailed(m_globalConstantBuffer->Map(0, nullptr, (void**)&pData));
-//    memcpy(pData, bufferData, sizeof(bufferData));
-//    m_globalConstantBuffer->Unmap(0, nullptr);
-//}
+void D3D12HelloTriangle::CreateGlobalConstantBuffer()
+{
+    // Due to HLSL packing rules, we create the CB with 9 float4 (each needs to start on a 16-byte boundary)
+    XMVECTOR bufferData[] =
+    {
+        //A matrix
+        XMVECTOR{1.0f, 0.0f, 0.0f, 1.0f},
+        XMVECTOR{0.7f, 0.4f, 0.0f, 1.0f},
+        XMVECTOR{0.4f, 0.7f, 0.0f, 1.0f},
+
+        //B matrix
+        XMVECTOR{0.0f, 1.0f, 0.0f, 1.0f},
+        XMVECTOR{0.0f, 0.7f, 0.4f, 1.0f},
+        XMVECTOR{0.0f, 0.4f, 0.7f, 1.0f},
+
+        //C matrix
+        XMVECTOR{0.0f, 0.0f, 1.0f, 1.0f},
+        XMVECTOR{0.4f, 0.0f, 0.7f, 1.0f},
+        XMVECTOR{0.7f, 0.0f, 0.4f, 1.0f},
+    };
+
+    // Create our buffer
+    m_globalConstantBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), sizeof(bufferData), D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+
+    // Copy CPU memory to GPU
+    uint8_t* pData;
+    //ID3D12Resource.Map() maps a pointer created to the GPU side, meaning that pointer now represents
+    //an address in GPU. Then, memcpy allows us to copy arbitrary data that we have on the CPU side to the GPU
+    //using the mapped pointer. Finally, since we don't need the GPU pointer anymore (and probably for preventing memory leaks)
+    //we use ID3D12Resource.Unmap(), unmaps the pointer from the GPU side.
+    ThrowIfFailed(m_globalConstantBuffer->Map(0, nullptr, (void**)&pData));
+    memcpy(pData, bufferData, sizeof(bufferData));
+    m_globalConstantBuffer->Unmap(0, nullptr);
+}

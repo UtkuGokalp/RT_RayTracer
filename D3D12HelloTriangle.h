@@ -174,6 +174,6 @@ private:
 	/// </summary>
 	void CreatePlaneVB();
 
-	//ComPtr<ID3D12Resource>m_globalConstantBuffer;
-	//void CreateGlobalConstantBuffer();
+	ComPtr<ID3D12Resource>m_globalConstantBuffer;
+	void CreateGlobalConstantBuffer();
 };
