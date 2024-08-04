@@ -11,9 +11,9 @@ StructuredBuffer<STriVertex> BTriVertex : register(t0);
 
 cbuffer Colors : register(b0)
 {
-    float3 A[3];
-    float3 B[3];
-    float3 C[3];
+    float3 A;
+    float3 B;
+    float3 C;
 }
 
 [shader("closesthit")]
@@ -30,7 +30,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     // Shade only the first 3 instances (triangles)
     if (InstanceID() < 3)
     {
-        hitColor = A[InstanceID()] * barycentrics.x + B[InstanceID()] * barycentrics.y + C[InstanceID()] * barycentrics.z;
+        hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
     }
     
     payload.colorAndDistance = float4(hitColor, RayTCurrent());

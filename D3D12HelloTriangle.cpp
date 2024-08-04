@@ -45,6 +45,8 @@ void D3D12HelloTriangle::OnInit()
     // rays (ray payload)
     CreateRaytracingPipeline();
     // #DXR Extra: Per-Instance Data
+    CreatePerInstanceConstantBuffers();
+    // #DXR Extra: Per-Instance Data
     // Create a constant buffer, with a color for each vertex of the triangle, for each triangle instance
     CreateGlobalConstantBuffer();
     // Allocate the buffer storing the raytracing output
@@ -547,7 +549,7 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
         //Step one: Gather the instances
         for (size_t i = 0; i < instances.size(); i++)
         {
-            m_topLevelASGenerator.AddInstance(instances[i].first.Get(), instances[i].second, static_cast<UINT>(i), 0);
+            m_topLevelASGenerator.AddInstance(instances[i].first.Get(), instances[i].second, (UINT)i, (UINT)i);
         }
 
         //Step two: Compute the memory requirements
@@ -795,6 +797,19 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // Adding the triangle hit shader
     m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_vertexBuffer->GetGPUVirtualAddress(), (void*)m_globalConstantBuffer->GetGPUVirtualAddress() });
     // #DXR Extra: Per-Instance Data
+    // We have 3 triangles, each of which needs to access its own constant buffer
+    // as a root parameter in its primary hit shader. The shadow hit only sets a
+    // boolean visibility in the payload, and does not require external data
+    std::vector<void*> inputData;
+    for (int i = 0; i < 3; i++)
+    {
+        inputData.push_back((void*)m_perInstanceConstantBuffers[i]->GetGPUVirtualAddress());
+    }
+    // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
+    inputData.push_back((void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()));
+    m_sbtHelper.AddHitGroup(L"HitGroup", inputData);
+    
+    // #DXR Extra: Per-Instance Data
     m_sbtHelper.AddHitGroup(L"PlaneHitGroup", {});
     // #DXR Extra: Per-Instance Data
     // Adding the triangle hit shader and constant buffer data
@@ -962,4 +977,37 @@ void D3D12HelloTriangle::CreateGlobalConstantBuffer()
     ThrowIfFailed(m_globalConstantBuffer->Map(0, nullptr, (void**)&pData));
     memcpy(pData, bufferData, sizeof(bufferData));
     m_globalConstantBuffer->Unmap(0, nullptr);
+}
+
+void D3D12HelloTriangle::CreatePerInstanceConstantBuffers()
+{
+    // Due to HLSL packing rules, we create the CB with 9 float4 (each needs to start on a 16-byte boundary)
+    XMVECTOR bufferData[] = {
+        // A
+        XMVECTOR{1.0f, 0.0f, 0.0f, 1.0f},
+        XMVECTOR{1.0f, 0.4f, 0.0f, 1.0f},
+        XMVECTOR{1.f, 0.7f, 0.0f, 1.0f},
+
+        // B
+        XMVECTOR{0.0f, 1.0f, 0.0f, 1.0f},
+        XMVECTOR{0.0f, 1.0f, 0.4f, 1.0f},
+        XMVECTOR{0.0f, 1.0f, 0.7f, 1.0f},
+
+        // C
+        XMVECTOR{0.0f, 0.0f, 1.0f, 1.0f},
+        XMVECTOR{0.4f, 0.0f, 1.0f, 1.0f},
+        XMVECTOR{0.7f, 0.0f, 1.0f, 1.0f},
+    };
+    m_perInstanceConstantBuffers.resize(3);
+    int i = 0;
+    for (auto& cb : m_perInstanceConstantBuffers)
+    {
+        const uint32_t bufferSize = sizeof(XMVECTOR) * 3;
+        cb = nv_helpers_dx12::CreateBuffer(m_device.Get(), bufferSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+        uint8_t* pData;
+        ThrowIfFailed(cb->Map(0, nullptr, (void**)&pData));
+        memcpy(pData, &bufferData[i * 3], bufferSize);
+        cb->Unmap(0, nullptr);
+        i++;
+    }
 }

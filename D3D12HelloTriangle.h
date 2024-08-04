@@ -174,6 +174,14 @@ private:
 	/// </summary>
 	void CreatePlaneVB();
 
+	// #DXR Extra: Per-Instance Data
 	ComPtr<ID3D12Resource>m_globalConstantBuffer;
 	void CreateGlobalConstantBuffer();
+
+	// #DXR Extra: Per-Instance Data
+	/// <summary>
+	/// Creates a different buffer for each of the 3 triangles.
+	/// </summary>
+	void CreatePerInstanceConstantBuffers();
+	std::vector<ComPtr<ID3D12Resource>> m_perInstanceConstantBuffers;
 };
