@@ -71,7 +71,7 @@ private:
 	UINT64 m_fenceValue;
 
 	//Rendering mode flag
-	bool m_raster = true;
+	bool m_raster = false;
 
 	void LoadPipeline();
 	void LoadAssets();
@@ -174,6 +174,6 @@ private:
 	/// </summary>
 	void CreatePlaneVB();
 
-	ComPtr<ID3D12Resource>m_globalConstantBuffer;
-	void CreateGlobalConstantBuffer();
+	//ComPtr<ID3D12Resource>m_globalConstantBuffer;
+	//void CreateGlobalConstantBuffer();
 };
