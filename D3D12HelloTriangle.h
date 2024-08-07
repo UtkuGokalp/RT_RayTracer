@@ -100,7 +100,7 @@ private:
 	/// </summary>
 	/// <param name="vVertexBuffers">Pair of vertex buffers and vertex count. The vertex buffers are assumed to contain Vertex structures.</param>
 	/// <returns>AccelerationStructureBuffers for TLAS</returns>
-	AccelerationStructureBuffers CreateBottomLevelAS(std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vVertexBuffers);
+	AccelerationStructureBuffers CreateBottomLevelAS(std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vVertexBuffers, std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vIndexBuffers = {});
 
 	/// <summary>
 	/// Create the main acceleration structure that holds all instances of the scene
@@ -184,4 +184,7 @@ private:
 	/// </summary>
 	void CreatePerInstanceConstantBuffers();
 	std::vector<ComPtr<ID3D12Resource>> m_perInstanceConstantBuffers;
+
+	ComPtr<ID3D12Resource> m_indexBuffer;
+	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 };
