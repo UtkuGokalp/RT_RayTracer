@@ -44,6 +44,10 @@ private:
 	{
 		XMFLOAT3 position;
 		XMFLOAT4 color;
+		//The constructors below are unused. They are only for providing compatibility
+		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
+		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z), color(color) {}
+		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position), color(color) {}
 	};
 
 	// Pipeline objects.
@@ -187,4 +191,11 @@ private:
 
 	ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+
+	void CreateMengerSpongeVB();
+	ComPtr<ID3D12Resource> m_mengerVB;
+	ComPtr<ID3D12Resource> m_mengerIB;
+	D3D12_VERTEX_BUFFER_VIEW m_mengerVBView;
+	D3D12_INDEX_BUFFER_VIEW m_mengerIBView;
+	UINT m_mengerVertexCount, m_mengerIndexCount;
 };
