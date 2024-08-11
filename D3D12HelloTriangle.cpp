@@ -630,8 +630,6 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     // 3 instances of the triangle + a plane
     // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
     m_instances = { { bottomLevelBuffers.pResult, XMMatrixTranslation(00.0f, 0.5f, 0.0f) },
-                    { bottomLevelBuffers.pResult, XMMatrixTranslation(-2.0f, 0.5f, 0.0f) },
-                    { bottomLevelBuffers.pResult, XMMatrixTranslation(+2.0f, 0.5f, 0.0f) },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) } };
     CreateTopLevelAS(m_instances);
 
