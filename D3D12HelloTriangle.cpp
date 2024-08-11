@@ -277,6 +277,8 @@ void D3D12HelloTriangle::LoadAssets()
         m_vertexBufferView.StrideInBytes = sizeof(Vertex);
         m_vertexBufferView.SizeInBytes = vertexBufferSize;
 
+        CreateMengerSpongeVB();
+
         //Initialize indices for tetrahedron.
         std::vector<UINT> indices = { 0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2 };
         const UINT indexBufferSizeInBytes = (UINT)indices.size() * sizeof(UINT);
@@ -404,6 +406,11 @@ void D3D12HelloTriangle::PopulateCommandList()
         m_commandList->DrawIndexedInstanced(12, 1, 0, 0, 0);
         m_commandList->IASetVertexBuffers(0, 1, &m_planeBufferView);
         m_commandList->DrawInstanced(6, 1, 0, 0);
+        // #DXR Extra: Indexed Geometry
+        // In a way similar to triangle rendering, rasterize the Menger Sponge
+        m_commandList->IASetVertexBuffers(0, 1, &m_mengerVBView);
+        m_commandList->IASetIndexBuffer(&m_mengerIBView);
+        m_commandList->DrawIndexedInstanced(m_mengerIndexCount, 1, 0, 0, 0);
     }
     else
     {
