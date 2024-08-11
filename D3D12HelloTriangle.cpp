@@ -1051,3 +1051,62 @@ void D3D12HelloTriangle::CreatePerInstanceConstantBuffers()
         i++;
     }
 }
+
+void D3D12HelloTriangle::CreateMengerSpongeVB()
+{
+    std::vector<Vertex> vertices;
+    std::vector<UINT> indices;
+    nv_helpers_dx12::GenerateMengerSponge(3, 0.75, vertices, indices);
+    {
+        const UINT mengerVBSize = (UINT)vertices.size() * sizeof(Vertex);
+        // Note: using upload heaps to transfer static data like vert buffers is not
+        // recommended. Every time the GPU needs it, the upload heap will be
+        // marshalled over. Please read up on Default Heap usage. An upload heap is
+        // used here for code simplicity and because there are very few verts to
+        // actually transfer.
+        CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC bufferResource = CD3DX12_RESOURCE_DESC::Buffer(mengerVBSize);
+        ThrowIfFailed(m_device->CreateCommittedResource(&heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_mengerVB)));
+
+        // Copy the triangle data to the vertex buffer.
+        UINT8* pVertexDataBegin;
+        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
+        ThrowIfFailed(m_mengerVB->Map(0, &readRange, (void**)&pVertexDataBegin));
+        memcpy(pVertexDataBegin, vertices.data(), mengerVBSize);
+        m_mengerVB->Unmap(0, nullptr);
+
+        // Initialize the vertex buffer view.
+        m_mengerVBView.BufferLocation = m_mengerVB->GetGPUVirtualAddress();
+        m_mengerVBView.StrideInBytes = sizeof(Vertex);
+        m_mengerVBView.SizeInBytes = mengerVBSize;
+    }
+    
+    {
+        const UINT mengerIBSize = (UINT)indices.size() * sizeof(UINT);
+
+        // Note: using upload heaps to transfer static data like vert buffers is not
+        // recommended. Every time the GPU needs it, the upload heap will be
+        // marshalled over. Please read up on Default Heap usage. An upload heap is
+        // used here for code simplicity and because there are very few verts to
+        // actually transfer.
+        CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC bufferResource = CD3DX12_RESOURCE_DESC::Buffer(mengerIBSize);
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, //
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_mengerIB)));
+
+        // Copy the triangle data to the index buffer.
+        UINT8* pIndexDataBegin;
+        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
+        ThrowIfFailed(m_mengerIB->Map(0, &readRange, (void**)&pIndexDataBegin));
+        memcpy(pIndexDataBegin, indices.data(), mengerIBSize);
+        m_mengerIB->Unmap(0, nullptr);
+
+        // Initialize the index buffer view.
+        m_mengerIBView.BufferLocation = m_mengerIB->GetGPUVirtualAddress();
+        m_mengerIBView.Format = DXGI_FORMAT_R32_UINT;
+        m_mengerIBView.SizeInBytes = mengerIBSize;
+    }
+    m_mengerIndexCount  = (UINT)indices.size();
+    m_mengerVertexCount = (UINT)vertices.size();
+}
