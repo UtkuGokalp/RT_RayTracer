@@ -633,11 +633,16 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     // Build the BLAS from triangle vertex buffer
     AccelerationStructureBuffers bottomLevelBuffers = CreateBottomLevelAS({ { m_vertexBuffer.Get(), 4 } }, { { m_indexBuffer.Get(), 12 } });
     AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
+    // #DXR Extra: Indexed Geometry    
+    // Build the bottom AS from the Menger Sponge vertex buffer
+    AccelerationStructureBuffers mengerBottomLevelBufferse = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
+                                                                                 { { m_mengerIB.Get(), m_mengerIndexCount } });
 
     // 3 instances of the triangle + a plane
     // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
     m_instances = { { bottomLevelBuffers.pResult, XMMatrixTranslation(00.0f, 0.5f, 0.0f) },
-                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) } };
+                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) },
+                    { mengerBottomLevelBufferse.pResult, XMMatrixIdentity() }};
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -846,6 +851,8 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     std::vector<void*> inputData;
     inputData.push_back((void*)m_vertexBuffer->GetGPUVirtualAddress());
     inputData.push_back((void*)m_indexBuffer->GetGPUVirtualAddress());
+    inputData.push_back((void*)m_mengerVB->GetGPUVirtualAddress());
+    inputData.push_back((void*)m_mengerIB->GetGPUVirtualAddress());
     inputData.push_back((void*)m_globalConstantBuffer->GetGPUVirtualAddress());
     // #DXR Extra: Per-Instance Data
     // We have 3 triangles, each of which needs to access its own constant buffer
