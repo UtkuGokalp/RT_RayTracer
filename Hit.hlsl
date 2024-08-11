@@ -8,6 +8,7 @@ struct STriVertex
 };
 
 StructuredBuffer<STriVertex> BTriVertex : register(t0);
+StructuredBuffer<int> indices : register(t1);
 
 cbuffer Colors : register(b0)
 {
@@ -30,7 +31,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     // Shade only the first 3 instances (triangles)
     if (InstanceID() < 3)
     {
-        hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
+        hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
+                   BTriVertex[indices[vertId + 1]].color * barycentrics.y +
+                   BTriVertex[indices[vertId + 2]].color * barycentrics.z;
     }
     
     payload.colorAndDistance = float4(hitColor, RayTCurrent());

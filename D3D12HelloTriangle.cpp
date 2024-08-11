@@ -19,6 +19,7 @@
 #include "manipulator.h"
 #include "windowsx.h"
 
+
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
     DXSample(width, height, name),
     m_frameIndex(0),
@@ -342,7 +343,14 @@ void D3D12HelloTriangle::OnRender()
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
     // Present the frame.
-    ThrowIfFailed(m_swapChain->Present(1, 0));
+    HRESULT result = m_swapChain->Present(1, 0);
+    //Whenever there is a bug in the code, the Present() function crashes.
+    //The code below helps with debugging, which is why ThrowIfFailed() is separated here.
+    if (result != S_OK)
+    {
+        HRESULT reason = m_device->GetDeviceRemovedReason();
+        ThrowIfFailed(result);
+    }
 
     WaitForPreviousFrame();
 }
@@ -528,7 +536,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
 
     //Step one: Gathering the geometry
     nv_helpers_dx12::BottomLevelASGenerator bottomLevelAS;
-
+    
     // #DXR Extra: Indexed Geometry
     for (size_t i = 0; i < vVertexBuffers.size(); i++)
     {
@@ -616,14 +624,14 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
 void D3D12HelloTriangle::CreateAccelerationStructures()
 {
     // Build the BLAS from triangle vertex buffer
-    AccelerationStructureBuffers bottomLevelBuffers = CreateBottomLevelAS({ { m_vertexBuffer.Get(), 4 } }, { {m_vertexBuffer.Get(), 12 } });
+    AccelerationStructureBuffers bottomLevelBuffers = CreateBottomLevelAS({ { m_vertexBuffer.Get(), 4 } }, { { m_indexBuffer.Get(), 12 } });
     AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
 
     // 3 instances of the triangle + a plane
     // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
-    m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() },
-                    { bottomLevelBuffers.pResult, XMMatrixTranslation(-0.6f, 0.0f, 0.0f) },
-                    { bottomLevelBuffers.pResult, XMMatrixTranslation(+0.6f, 0.0f, 0.0f) },
+    m_instances = { { bottomLevelBuffers.pResult, XMMatrixTranslation(00.0f, 0.5f, 0.0f) },
+                    { bottomLevelBuffers.pResult, XMMatrixTranslation(-2.0f, 0.5f, 0.0f) },
+                    { bottomLevelBuffers.pResult, XMMatrixTranslation(+2.0f, 0.5f, 0.0f) },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) } };
     CreateTopLevelAS(m_instances);
 
@@ -658,10 +666,9 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
 
 ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
 {
-    //Hit shader only needs the hit info, which comes from the shaders themselves
-    //therefore it doesn't need any external data.
     nv_helpers_dx12::RootSignatureGenerator rsg;
-    rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV);
+    rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices and colors
+    rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
     // #DXR Extra: Per-Instance Data
     // The vertex colors may differ for each instance, so it is not possible to
     // point to a single buffer in the heap. Instead we use the concept of root
@@ -830,25 +837,25 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"Miss", {});
 
     // Adding the triangle hit shader
-    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_vertexBuffer->GetGPUVirtualAddress(), (void*)m_globalConstantBuffer->GetGPUVirtualAddress() });
+
+    std::vector<void*> inputData;
+    inputData.push_back((void*)m_vertexBuffer->GetGPUVirtualAddress());
+    inputData.push_back((void*)m_indexBuffer->GetGPUVirtualAddress());
+    inputData.push_back((void*)m_globalConstantBuffer->GetGPUVirtualAddress());
     // #DXR Extra: Per-Instance Data
     // We have 3 triangles, each of which needs to access its own constant buffer
     // as a root parameter in its primary hit shader. The shadow hit only sets a
     // boolean visibility in the payload, and does not require external data
-    std::vector<void*> inputData;
     for (int i = 0; i < 3; i++)
     {
         inputData.push_back((void*)m_perInstanceConstantBuffers[i]->GetGPUVirtualAddress());
     }
-    // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
+    //// The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
     inputData.push_back((void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()));
     m_sbtHelper.AddHitGroup(L"HitGroup", inputData);
-    
+        
     // #DXR Extra: Per-Instance Data
     m_sbtHelper.AddHitGroup(L"PlaneHitGroup", {});
-    // #DXR Extra: Per-Instance Data
-    // Adding the triangle hit shader and constant buffer data
-    //m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_globalConstantBuffer->GetGPUVirtualAddress() });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
@@ -948,12 +955,12 @@ void D3D12HelloTriangle::CreatePlaneVB()
 {
     // Define the geometry for a plane.
     Vertex planeVertices[] = {
-        {{-1.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 0
-        {{-1.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
-        {{01.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
-        {{01.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
-        {{-1.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
-        {{01.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}  // 4
+        {{-3.5f, -.8f, 03.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 0
+        {{-3.5f, -.8f, -3.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
+        {{03.5f, -.8f, 03.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
+        {{03.5f, -.8f, 03.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
+        {{-3.5f, -.8f, -3.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
+        {{03.5f, -.8f, -3.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}  // 4
     };
     const UINT planeBufferSize = sizeof(planeVertices);
 
