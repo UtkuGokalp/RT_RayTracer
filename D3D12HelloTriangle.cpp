@@ -845,8 +845,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // communicate their results through the ray payload
     m_sbtHelper.AddMissProgram(L"Miss", {});
 
-    // Adding the triangle hit shader
-
+    // Hit shader setup
     std::vector<void*> inputData;
     //Commented out are the formerly triangle, currently tetrahedron datas vertices and indices.
     //inputData.push_back((void*)m_vertexBuffer->GetGPUVirtualAddress());
