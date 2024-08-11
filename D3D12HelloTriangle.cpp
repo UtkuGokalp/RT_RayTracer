@@ -330,8 +330,8 @@ void D3D12HelloTriangle::OnUpdate()
     // #DXR Extra - Refitting
     // Increment the time counter at each frame, and update the corresponding instance matrix of the
     // first triangle to animate its position
-    //m_time++;
-    //m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
+    m_time++;
+    m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
 }
 
 // Render the scene.
@@ -421,7 +421,7 @@ void D3D12HelloTriangle::PopulateCommandList()
         // Refit the top-level acceleration structure to account for the new transform matrix of the
         // triangle. Note that the build contains a barrier, hence we can do the rendering in the
         // same command list
-        //CreateTopLevelAS(m_instances, true);
+        CreateTopLevelAS(m_instances, true);
 
         // #DXR
         // Bind the descriptor heap giving access to the top-level acceleration
@@ -640,9 +640,8 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
 
     // 3 instances of the triangle + a plane
     // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
-    m_instances = { { bottomLevelBuffers.pResult, XMMatrixTranslation(00.0f, 0.5f, 0.0f) },
-                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) },
-                    { mengerBottomLevelBufferse.pResult, XMMatrixIdentity() }};
+    m_instances = { { mengerBottomLevelBufferse.pResult, XMMatrixIdentity() },
+                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) }};
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -849,8 +848,9 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // Adding the triangle hit shader
 
     std::vector<void*> inputData;
-    inputData.push_back((void*)m_vertexBuffer->GetGPUVirtualAddress());
-    inputData.push_back((void*)m_indexBuffer->GetGPUVirtualAddress());
+    //Commented out are the formerly triangle, currently tetrahedron datas vertices and indices.
+    //inputData.push_back((void*)m_vertexBuffer->GetGPUVirtualAddress());
+    //inputData.push_back((void*)m_indexBuffer->GetGPUVirtualAddress());
     inputData.push_back((void*)m_mengerVB->GetGPUVirtualAddress());
     inputData.push_back((void*)m_mengerIB->GetGPUVirtualAddress());
     inputData.push_back((void*)m_globalConstantBuffer->GetGPUVirtualAddress());
@@ -858,11 +858,12 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // We have 3 triangles, each of which needs to access its own constant buffer
     // as a root parameter in its primary hit shader. The shadow hit only sets a
     // boolean visibility in the payload, and does not require external data
+    //No triangles or tetrahedrons anymore, is this for loop really necessary???
     for (int i = 0; i < 3; i++)
     {
         inputData.push_back((void*)m_perInstanceConstantBuffers[i]->GetGPUVirtualAddress());
     }
-    //// The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
+    // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
     inputData.push_back((void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()));
     m_sbtHelper.AddHitGroup(L"HitGroup", inputData);
         
