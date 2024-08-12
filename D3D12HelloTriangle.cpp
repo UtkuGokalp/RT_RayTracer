@@ -394,12 +394,18 @@ void D3D12HelloTriangle::PopulateCommandList()
     m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
-    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+    // #DXR Extra: Depth Buffering
+    // Bind the depth buffer as a render target
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
     // Record commands.
     // #DXR
     if (m_raster)
     {
+        // #DXR Extra: Depth Buffering
+        //Clear the depth buffer before rendering.
+        m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
         // #DXR Extra: Perspective Camera
         std::vector<ID3D12DescriptorHeap*> heaps = { m_constHeap.Get() };
         m_commandList->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
