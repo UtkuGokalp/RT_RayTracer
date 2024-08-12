@@ -1124,3 +1124,29 @@ void D3D12HelloTriangle::CreateMengerSpongeVB()
     m_mengerIndexCount  = (UINT)indices.size();
     m_mengerVertexCount = (UINT)vertices.size();
 }
+
+void D3D12HelloTriangle::CreateDepthBuffer()
+{
+    // Create the depth buffer for rasterization. This buffer needs to be kept in a separate heap.
+    // The depth buffer heap type is specific for that usage, and the heap contents are not visible from the shaders
+    m_dsvHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 1, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, false);
+    // The depth and stencil can be packed into a single 32-bit texture buffer. Since we do not need
+    // stencil, we use the 32 bits to store depth information (DXGI_FORMAT_D32_FLOAT). 
+    //If stencil is needed, DXGI_FORMAT_D24_UNORM_S8_UINT can be used to add a stencil component to the buffer.
+    D3D12_HEAP_PROPERTIES depthHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+    D3D12_RESOURCE_DESC depthResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, m_width, m_height, 1, 1);
+    depthResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    
+    // The depth values will be initialized to 1
+    CD3DX12_CLEAR_VALUE depthOptimizedClearValue(DXGI_FORMAT_D32_FLOAT, 1.0f, 0);
+
+    // Allocate the buffer itself, with a state allowing depth writes
+    ThrowIfFailed(m_device->CreateCommittedResource(&depthHeapProperties, D3D12_HEAP_FLAG_NONE, &depthResourceDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, IID_PPV_ARGS(&m_depthStencil)));
+    
+    // Write the depth buffer view into the depth buffer heap
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+    m_device->CreateDepthStencilView(m_depthStencil.Get(), &dsvDesc, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+}

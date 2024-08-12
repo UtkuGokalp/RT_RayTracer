@@ -198,4 +198,9 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_mengerVBView;
 	D3D12_INDEX_BUFFER_VIEW m_mengerIBView;
 	UINT m_mengerVertexCount, m_mengerIndexCount;
+
+	// #DXR Extra: Depth Buffering
+	void CreateDepthBuffer();
+	ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
+	ComPtr<ID3D12Resource> m_depthStencil;
 };
