@@ -172,6 +172,11 @@ void D3D12HelloTriangle::LoadPipeline()
     }
 
     ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
+
+    // #DXR Extra: Depth Buffering
+    // The original sample does not support depth buffering, so we need to allocate a depth buffer,
+    // and later bind it before rasterization
+    CreateDepthBuffer();
 }
 
 // Load the sample assets.
@@ -234,6 +239,8 @@ void D3D12HelloTriangle::LoadAssets()
         psoDesc.NumRenderTargets = 1;
         psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
         psoDesc.SampleDesc.Count = 1;
+        psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
         ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
     }
 
