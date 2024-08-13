@@ -19,7 +19,6 @@
 #include "manipulator.h"
 #include "windowsx.h"
 
-
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
     DXSample(width, height, name),
     m_frameIndex(0),
@@ -646,14 +645,14 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     // Build the BLAS from triangle vertex buffer
     AccelerationStructureBuffers bottomLevelBuffers = CreateBottomLevelAS({ { m_vertexBuffer.Get(), 4 } }, { { m_indexBuffer.Get(), 12 } });
     AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
-    // #DXR Extra: Indexed Geometry    
+    // #DXR Extra: Indexed Geometry
     // Build the bottom AS from the Menger Sponge vertex buffer
-    AccelerationStructureBuffers mengerBottomLevelBufferse = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
+    AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
                                                                                  { { m_mengerIB.Get(), m_mengerIndexCount } });
 
     // 3 instances of the triangle + a plane
     // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
-    m_instances = { { mengerBottomLevelBufferse.pResult, XMMatrixIdentity() },
+    m_instances = { { mengerBottomLevelBuffers.pResult, XMMatrixIdentity() },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) }};
     CreateTopLevelAS(m_instances);
 
