@@ -650,9 +650,9 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
                                                                                  { { m_mengerIB.Get(), m_mengerIndexCount } });
 
-    // 3 instances of the triangle + a plane
-    // Note: The error in here is just in Visual Studio, the program compiles and runs without a problem
     m_instances = { { mengerBottomLevelBuffers.pResult, XMMatrixIdentity() },
+                    { mengerBottomLevelBuffers.pResult, XMMatrixTranslation(2.0f, 0.0f, 0.0f) },
+                    { mengerBottomLevelBuffers.pResult, XMMatrixTranslation(-2.0f, 0.0f, 0.0f) },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) }};
     CreateTopLevelAS(m_instances);
 
@@ -840,11 +840,9 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
 {
     //The resources are bound to shaders in this function.
 
-    // The SBT helper class collects calls to Add*Program.  If called several
-    // times, the helper must be emptied before re-adding shaders.
+    // The SBT helper class collects calls to Add*Program. If called several times, the helper must be emptied before re-adding shaders.
     m_sbtHelper.Reset();
-    // The pointer to the beginning of the heap is the only parameter required by
-    // shaders without root parameters
+    // The pointer to the beginning of the heap is the only parameter required by shaders without root parameters
     D3D12_GPU_DESCRIPTOR_HANDLE srvUavHeapHandle = m_srvUavHeap->GetGPUDescriptorHandleForHeapStart();
     // The helper treats both root parameter pointers and heap pointers as void*, while DX12 uses the
     // D3D12_GPU_DESCRIPTOR_HANDLE to define heap pointers. The pointer in this struct is a UINT64,

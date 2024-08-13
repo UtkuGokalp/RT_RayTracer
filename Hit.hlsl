@@ -27,9 +27,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     uint vertId = 3 * PrimitiveIndex();
     
     // #DXR Extra: Per-Instance Data
-    float3 hitColor = float3(0.6, 0.7, 0.6);
+    float3 hitColor = float3(0.6f, 0.7f, 0.6f);
     // Shade only the first 3 instances (triangles)
-    if (InstanceID() < 3)
+    //if (InstanceID() < 3)
     {
         hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
                    BTriVertex[indices[vertId + 1]].color * barycentrics.y +
