@@ -611,7 +611,7 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
         //Step one: Gather the instances
         for (size_t i = 0; i < instances.size(); i++)
         {
-            m_topLevelASGenerator.AddInstance(instances[i].first.Get(), instances[i].second, (UINT)i, (UINT)i);
+            m_topLevelASGenerator.AddInstance(instances[i].first.Get(), instances[i].second, (UINT)i, (UINT)(i * 2) /*#DXR Extra - Another ray type makes it such that there will be 2 hit groups per instance*/);
         }
 
         //Step two: Compute the memory requirements
@@ -723,6 +723,8 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     m_rayGenLibrary = nv_helpers_dx12::CompileShaderLibrary(L"RayGen.hlsl");
     m_missLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Miss.hlsl");
     m_hitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Hit.hlsl");
+    // #DXR Extra - Another ray type
+    m_shadowLibrary = nv_helpers_dx12::CompileShaderLibrary(L"ShadowRay.hlsl");
 
     //Secondly, we add the libraries to the pipeline
     // In a way similar to DLLs, each library is associated with a number of
@@ -732,11 +734,15 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
     //L"PlaneClosestHit" is from #DXR Extra: Per-Instance Data
     pipeline.AddLibrary(m_hitLibrary.Get(), { L"ClosestHit", L"PlaneClosestHit" });
+    // #DXR Extra - Another ray type
+    pipeline.AddLibrary(m_shadowLibrary.Get(), { L"ShadowClosestHit", L"ShadowMiss" });
 
     //Third, we generate the root signatures of the shaders so that we can define which parameters and buffers will be accessed.
     m_rayGenSignature = CreateRayGenSignature();
     m_hitSignature = CreateHitSignature();
     m_missSignature = CreateMissSignature();
+    // #DXR Extra - Another ray type
+    m_shadowSignature = CreateHitSignature();
 
     //Fourth, we need to define what happens when a ray hits our geometry. There are three types of hits: Intersection shader, any-hit shader and a closest-hit shader.
     //All these shaders are stored in what's called a HitGroup. An intersection shader is used when a ray hits a non-triangular geometry. Non-triangular geometries aren't used
@@ -746,6 +752,9 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     //shader and that will be fed into the pipeline as the closest-hit shader.
     pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
     pipeline.AddHitGroup(L"PlaneHitGroup", L"PlaneClosestHit");
+    // #DXR Extra - Another ray type
+    // Hit group for all geometry when hit by a shadow ray
+    pipeline.AddHitGroup(L"ShadowHitGroup", L"ShadowClosestHit");
 
     //Fifth, we need to associate the shaders imported from DXIL libraries with exactly one root signature.
     // The following section associates the root signature to each shader. Note
@@ -754,8 +763,11 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // to as hit groups, meaning that the underlying intersection, any-hit and
     // closest-hit shaders share the same root signature.
     pipeline.AddRootSignatureAssociation(m_rayGenSignature.Get(), { L"RayGen" });
-    pipeline.AddRootSignatureAssociation(m_missSignature.Get(), { L"Miss" });
+    //ShadowMiss comes from #DXR Extra - Another ray type
+    pipeline.AddRootSignatureAssociation(m_missSignature.Get(), { L"Miss", L"ShadowMiss" });
     pipeline.AddRootSignatureAssociation(m_hitSignature.Get(), { L"HitGroup", L"PlaneHitGroup" });
+    // #DXR Extra - Another ray type
+    pipeline.AddRootSignatureAssociation(m_shadowSignature.Get(), { L"ShadowHitGroup" });
 
     //Sixth, we need to define the memory sizes and recursions allowed to the shaders.
     // The payload size defines the maximum size of the data carried by the rays,
@@ -771,11 +783,11 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     pipeline.SetMaxAttributeSize(2 * sizeof(float)); // barycentric coordinates (float2 type in HLSL)
 
     // The raytracing process can shoot rays from existing hit points, resulting
-    // in nested TraceRay calls. Our sample code traces only primary rays, which
-    // then requires a trace depth of 1. Note that this recursion depth should be
-    // kept to a minimum for best performance. Path tracing algorithms can be
-    // easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(1);
+    // in nested TraceRay calls. Our code includes shadow rays, which means
+    // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point). 
+    // Note that this recursion depth should be kept to a minimum for best performance.
+    // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
+    pipeline.SetMaxRecursionDepth(2);
 
     //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
     //so that later we can access the shader pointers by name.
@@ -855,6 +867,8 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // The miss and hit shaders do not access any external resources: instead they
     // communicate their results through the ray payload
     m_sbtHelper.AddMissProgram(L"Miss", {});
+    // #DXR Extra - Another ray type
+    m_sbtHelper.AddMissProgram(L"ShadowMiss", {});
 
     // Hit shader setup
     std::vector<void*> inputData;
@@ -875,9 +889,12 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     }
     // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
     m_sbtHelper.AddHitGroup(L"HitGroup", inputData);
+
+    // #DXR Extra - Another ray type
+    m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
     
     // #DXR Extra: Per-Instance Data
-    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { (void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()) });
+    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { (void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()), heapPointer });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
