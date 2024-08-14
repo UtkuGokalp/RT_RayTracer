@@ -651,8 +651,6 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
                                                                                  { { m_mengerIB.Get(), m_mengerIndexCount } });
 
     m_instances = { { mengerBottomLevelBuffers.pResult, XMMatrixIdentity() },
-                    { mengerBottomLevelBuffers.pResult, XMMatrixTranslation(2.0f, 0.0f, 0.0f) },
-                    { mengerBottomLevelBuffers.pResult, XMMatrixTranslation(-2.0f, 0.0f, 0.0f) },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) }};
     CreateTopLevelAS(m_instances);
 
@@ -873,11 +871,10 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
         inputData.push_back((void*)m_perInstanceConstantBuffers[i]->GetGPUVirtualAddress());
     }
     // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
-    inputData.push_back((void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()));
     m_sbtHelper.AddHitGroup(L"HitGroup", inputData);
-        
+    
     // #DXR Extra: Per-Instance Data
-    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", {});
+    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { (void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()) });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();

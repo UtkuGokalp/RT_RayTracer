@@ -47,6 +47,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
                                  attrib.bary.x,
                                  attrib.bary.y);
     
+    uint vertId = 3 * PrimitiveIndex();
     float3 hitColor = float3(0.7f, 0.7f, 0.3f);
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
