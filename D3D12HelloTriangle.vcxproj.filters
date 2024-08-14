@@ -220,6 +220,7 @@
     <FxCompile Include="Hit.hlsl" />
     <FxCompile Include="Miss.hlsl" />
     <FxCompile Include="RayGen.hlsl" />
+    <FxCompile Include="ShadowRay.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="glm\detail\func_common.inl" />

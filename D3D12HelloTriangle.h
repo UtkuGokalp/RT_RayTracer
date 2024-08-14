@@ -203,4 +203,8 @@ private:
 	void CreateDepthBuffer();
 	ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 	ComPtr<ID3D12Resource> m_depthStencil;
+
+	// #DXR Extra - Another ray type
+	ComPtr<IDxcBlob> m_shadowLibrary;
+	ComPtr<ID3D12RootSignature> m_shadowSignature;
 };
