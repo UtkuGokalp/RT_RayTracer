@@ -688,6 +688,9 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices and colors
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
+    // #DXR Extra - Another ray type
+    // Add a single range pointing to the TLAS in the heap
+    rsg.AddHeapRangesParameter({ { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ } });
     // #DXR Extra: Per-Instance Data
     // The vertex colors may differ for each instance, so it is not possible to
     // point to a single buffer in the heap. Instead we use the concept of root
