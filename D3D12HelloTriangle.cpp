@@ -880,8 +880,6 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
                                            (void*)m_mengerIB->GetGPUVirtualAddress(),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress() });
 
-    m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
-
     // #DXR Extra: Per-Instance Data
     // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
     m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { heapPointer }); //(void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()),
