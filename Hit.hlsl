@@ -64,7 +64,6 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     ray.Direction = lightDir;
     ray.TMin = 0.01;
     ray.TMax = 100000;
-    bool hit = true;
     
     // Initialize the ray payload
     ShadowHitInfo shadowPayload;
@@ -107,11 +106,6 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     shadowPayload
     );
     float shadowFactor = shadowPayload.isHit ? 0.3f : 1.0f;
-    
-    float3 barycentrics = float3(1.0f - attrib.bary.x - attrib.bary.y,
-                                 attrib.bary.x,
-                                 attrib.bary.y);
-    
-    float3 hitColor = float4(float3(0.7f, 0.7f, 0.3f) * shadowFactor, RayTCurrent());
+    float3 hitColor = float3(0.7f, 0.7f, 0.3f) * shadowFactor;
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }

@@ -784,7 +784,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
 
     // The raytracing process can shoot rays from existing hit points, resulting
     // in nested TraceRay calls. Our code includes shadow rays, which means
-    // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point). 
+    // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point).
     // Note that this recursion depth should be kept to a minimum for best performance.
     // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
     pipeline.SetMaxRecursionDepth(2);
@@ -871,27 +871,20 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"ShadowMiss", {});
 
     // Hit shader setup
-    std::vector<void*> inputData;
     //Commented out are the formerly triangle, currently tetrahedron datas vertices and indices.
-    //inputData.push_back((void*)m_vertexBuffer->GetGPUVirtualAddress());
-    //inputData.push_back((void*)m_indexBuffer->GetGPUVirtualAddress());
-    inputData.push_back((void*)m_mengerVB->GetGPUVirtualAddress());
-    inputData.push_back((void*)m_mengerIB->GetGPUVirtualAddress());
-    inputData.push_back((void*)m_globalConstantBuffer->GetGPUVirtualAddress());
     // #DXR Extra: Per-Instance Data
     // We have 3 triangles, each of which needs to access its own constant buffer
     // as a root parameter in its primary hit shader. The shadow hit only sets a
     // boolean visibility in the payload, and does not require external data
-    //No triangles or tetrahedrons anymore, is this for loop really necessary???
-    for (int i = 0; i < 3; i++)
-    {
-        inputData.push_back((void*)m_perInstanceConstantBuffers[i]->GetGPUVirtualAddress());
-    }
     // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
-    m_sbtHelper.AddHitGroup(L"HitGroup", inputData);
+    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_mengerVB->GetGPUVirtualAddress(),
+                                           (void*)m_mengerIB->GetGPUVirtualAddress(),
+                                           (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress() });
+
+    m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
     // #DXR Extra: Per-Instance Data
-    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { (void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()), heapPointer });
+    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { heapPointer }); //(void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()),
 
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
