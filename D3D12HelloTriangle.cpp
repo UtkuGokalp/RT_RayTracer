@@ -336,8 +336,8 @@ void D3D12HelloTriangle::OnUpdate()
     // #DXR Extra - Refitting
     // Increment the time counter at each frame, and update the corresponding instance matrix of the
     // first triangle to animate its position
-    m_time++;
-    m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
+    //m_time++;
+    //m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
 }
 
 // Render the scene.
@@ -433,7 +433,7 @@ void D3D12HelloTriangle::PopulateCommandList()
         // Refit the top-level acceleration structure to account for the new transform matrix of the
         // triangle. Note that the build contains a barrier, hence we can do the rendering in the
         // same command list
-        CreateTopLevelAS(m_instances, true);
+        //CreateTopLevelAS(m_instances, true);
 
         // #DXR
         // Bind the descriptor heap giving access to the top-level acceleration
