@@ -876,7 +876,6 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     // We have 3 triangles, each of which needs to access its own constant buffer
     // as a root parameter in its primary hit shader. The shadow hit only sets a
     // boolean visibility in the payload, and does not require external data
-    // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
     m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_mengerVB->GetGPUVirtualAddress(),
                                            (void*)m_mengerIB->GetGPUVirtualAddress(),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress() });
@@ -884,6 +883,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
     // #DXR Extra: Per-Instance Data
+    // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
     m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { heapPointer }); //(void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()),
 
     // #DXR Extra - Another ray type
