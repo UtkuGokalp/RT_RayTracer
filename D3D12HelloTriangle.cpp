@@ -871,7 +871,6 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"ShadowMiss", {});
 
     // Hit shader setup
-    //Commented out are the formerly triangle, currently tetrahedron datas vertices and indices.
     // #DXR Extra: Per-Instance Data
     // We have 3 triangles, each of which needs to access its own constant buffer
     // as a root parameter in its primary hit shader. The shadow hit only sets a
