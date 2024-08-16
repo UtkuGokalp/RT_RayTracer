@@ -82,8 +82,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // shading, and what to do when hitting to compute shadows). Those hit
     // groups are specified sequentially in the shader binding table, so the value below
     // indicates which offset (on 4 bits) to apply to the hit groups for this
-    // ray. In this sample we only have one hit group per object, hence an
-    // offset of 0.
+    // ray. The shadow hit group is the 2nd hit group in the SBT, so an index of 1.
     1,
     // The offsets in the SBT can be computed from the object ID, its instance
     // ID, but also simply by the order the objects have been pushed in the
@@ -96,8 +95,8 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // shaders are present in the SBT. This allows to change the behavior of
     // the program when no geometry have been hit, for example one to return a
     // sky color for regular rendering, and another returning a full
-    // visibility value for shadow rays. This sample has only one miss shader,
-    // hence an index 0
+    // visibility value for shadow rays. Shadow miss program is the 2nd miss program,
+    //so an index of 1.
     1,
     // Ray information to trace
     ray,
