@@ -33,7 +33,6 @@ void D3D12HelloTriangle::OnInit()
     //Setup for camera movement and rotation
     nv_helpers_dx12::CameraManip.setWindowSize(GetWidth(), GetHeight());
     nv_helpers_dx12::CameraManip.setLookat(glm::vec3(1.5f, 1.5f, 1.5f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-
     LoadPipeline();
     LoadAssets();
     CheckRaytracingSupport();
@@ -61,6 +60,8 @@ void D3D12HelloTriangle::OnInit()
     // Create the shader binding table and indicating which shaders
     // are invoked for each instance in the  AS
     CreateShaderBindingTable();
+    //Initialize ImGui.
+    InitializeImGuiContext();
     // Command lists are created in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.
     ThrowIfFailed(m_commandList->Close());
@@ -359,7 +360,7 @@ void D3D12HelloTriangle::OnRender()
         HRESULT reason = m_device->GetDeviceRemovedReason();
         ThrowIfFailed(result);
     }
-
+    //TODO: ImGui code
     WaitForPreviousFrame();
 }
 
@@ -368,7 +369,7 @@ void D3D12HelloTriangle::OnDestroy()
     // Ensure that the GPU is no longer referencing resources that are about to be
     // cleaned up by the destructor.
     WaitForPreviousFrame();
-
+    //TODO: Add ImGui cleanup here (it should be before closing the main window).
     CloseHandle(m_fenceEvent);
 }
 
@@ -1166,4 +1167,55 @@ void D3D12HelloTriangle::CreateDepthBuffer()
     dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
     m_device->CreateDepthStencilView(m_depthStencil.Get(), &dsvDesc, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+}
+
+void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io; //In order to get rid of io not used warnings
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
+
+    if (darkTheme)
+    {
+        ImGui::StyleColorsDark();
+    }
+    else
+    {
+        ImGui::StyleColorsLight();
+    }
+
+    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) //If viewports are enabled
+    {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplWin32_Init(m_windowHandle);
+    const int NUM_FRAMES_IN_FLIGHT = 3; //idky 3, it's used that way in the example file of imgui1.
+    ImGui_ImplDX12_Init(m_device.Get(), NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, m_rtvHeap.Get(), m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_rtvHeap->GetGPUDescriptorHandleForHeapStart());
+    
+    //If custom fonts are needed, they are to be implemented in this part of the initialization. For now, default font is fine.
+    //The procedure to load and use fonts is as explained below:
+    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
+    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
+    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
+    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
+    // - Read 'docs/FONTS.md' for more instructions and details.
+    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
+    //io.Fonts->AddFontDefault();
+    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
+    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    //IM_ASSERT(font != nullptr);
 }

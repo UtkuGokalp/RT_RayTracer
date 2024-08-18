@@ -99,3 +99,8 @@ void DXSample::OnButtonDown(UINT32)
 {
 
 }
+
+void DXSample::SetWindowHandle(HWND windowHandle)
+{
+	m_windowHandle = windowHandle;
+}

@@ -35,6 +35,7 @@ public:
 	UINT GetWidth() const           { return m_width; }
 	UINT GetHeight() const          { return m_height; }
 	const WCHAR* GetTitle() const   { return m_title.c_str(); }
+	void SetWindowHandle(HWND windowHandle);
 
 	void ParseCommandLineArgs(_In_reads_(argc) WCHAR* argv[], int argc);
 
@@ -50,6 +51,9 @@ protected:
 
 	// Adapter info.
 	bool m_useWarpDevice;
+
+	//Window info.
+	HWND m_windowHandle;
 
 private:
 	// Root assets path.

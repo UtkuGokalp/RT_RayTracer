@@ -11,6 +11,7 @@
 
 #include "stdafx.h"
 #include "Win32Application.h"
+#include "ImGui/imgui.h"
 
 HWND Win32Application::m_hwnd = nullptr;
 
@@ -50,6 +51,7 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 		pSample);
 
 	// Initialize the sample. OnInit is defined in each child-implementation of DXSample.
+	pSample->SetWindowHandle(m_hwnd);
 	pSample->OnInit();
 
 	ShowWindow(m_hwnd, nCmdShow);

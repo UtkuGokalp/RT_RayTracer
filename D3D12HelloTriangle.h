@@ -15,6 +15,9 @@
 #include <stdexcept>
 #include <dxcapi.h>
 #include <vector>
+#include "imgui.h"
+#include "imgui_impl_dx12.h"
+#include "imgui_impl_win32.h"
 #include "nv_helpers_dx12/TopLevelASGenerator.h"
 #include "nv_helpers_dx12/ShaderBindingTableGenerator.h"
 
@@ -207,4 +210,6 @@ private:
 	// #DXR Extra - Another ray type
 	ComPtr<IDxcBlob> m_shadowLibrary;
 	ComPtr<ID3D12RootSignature> m_shadowSignature;
+
+	void InitializeImGuiContext(bool darkTheme = true);
 };
