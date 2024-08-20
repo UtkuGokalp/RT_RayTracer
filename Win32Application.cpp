@@ -74,6 +74,9 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 	return static_cast<char>(msg.wParam);
 }
 
+#include "imgui_impl_dx12.h"
+#include "imgui_impl_win32.h"
+
 // Main message handler for the sample.
 LRESULT CALLBACK Win32Application::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {

@@ -94,7 +94,7 @@ void D3D12HelloTriangle::LoadPipeline()
     {
         ComPtr<IDXGIAdapter> warpAdapter;
         ThrowIfFailed(factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
-
+        
         ThrowIfFailed(D3D12CreateDevice(
             warpAdapter.Get(),
             D3D_FEATURE_LEVEL_12_1,
@@ -351,7 +351,7 @@ void D3D12HelloTriangle::OnRender()
     ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
-    // Present the frame.
+    // Present the frame (first argument 1 for vsync enabled, 0 for vsync disabled).
     HRESULT result = m_swapChain->Present(1, 0);
     //Whenever there is a bug in the code, the Present() function crashes.
     //The code below helps with debugging, which is why ThrowIfFailed() is separated here.
@@ -360,7 +360,7 @@ void D3D12HelloTriangle::OnRender()
         HRESULT reason = m_device->GetDeviceRemovedReason();
         ThrowIfFailed(result);
     }
-    //TODO: ImGui code
+
     WaitForPreviousFrame();
 }
 
@@ -369,6 +369,10 @@ void D3D12HelloTriangle::OnDestroy()
     // Ensure that the GPU is no longer referencing resources that are about to be
     // cleaned up by the destructor.
     WaitForPreviousFrame();
+    //Cleanup ImGui
+    //ImGui_ImplDX12_Shutdown();
+    //ImGui_ImplWin32_Shutdown();
+    //ImGui::DestroyContext();
     //TODO: Add ImGui cleanup here (it should be before closing the main window).
     CloseHandle(m_fenceEvent);
 }
@@ -500,9 +504,18 @@ void D3D12HelloTriangle::PopulateCommandList()
         m_commandList->ResourceBarrier(1, &transition);
     }
 
+    //ImGui code goes here
+    ImGui_ImplWin32_NewFrame();
+    ImGui_ImplDX12_NewFrame();
+    ImGui::NewFrame();
+    ConstructFrontEndUI();
+    ImGui::Render();
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.Get()); //Render ImGui
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_commandList.Get());
+
     // Indicate that the back buffer will now be used to present.
     m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
     ThrowIfFailed(m_commandList->Close());
 }
 
@@ -545,6 +558,15 @@ void D3D12HelloTriangle::OnKeyUp(UINT8 key)
     {
         m_raster = !m_raster;
     }
+    if (key == VK_ADD)
+    {
+        showDemoUI = !showDemoUI;
+    }
+}
+
+void D3D12HelloTriangle::OnKeyDown(UINT8 key)
+{
+    //Important note: This function is called multiple times if the key is held.
 }
 
 D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBottomLevelAS(std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vVertexBuffers, std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vIndexBuffers)
@@ -1169,12 +1191,20 @@ void D3D12HelloTriangle::CreateDepthBuffer()
     m_device->CreateDepthStencilView(m_depthStencil.Get(), &dsvDesc, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
+void D3D12HelloTriangle::CreateImGuiFontDescriptorHeap()
+{
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
+    srvHeapDesc.NumDescriptors = 1;
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_imguiFontDescriptorHeap)));
+}
+
 void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    (void)io; //In order to get rid of io not used warnings
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
@@ -1199,12 +1229,20 @@ void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(m_windowHandle);
-    const int NUM_FRAMES_IN_FLIGHT = 3; //idky 3, it's used that way in the example file of imgui1.
-    ImGui_ImplDX12_Init(m_device.Get(), NUM_FRAMES_IN_FLIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, m_rtvHeap.Get(), m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_rtvHeap->GetGPUDescriptorHandleForHeapStart());
+    const int NUM_FRAMES_IN_FLIGHT = 2;
+    //TODO: The error is caused by misuse of this function, search how to use specifically this function!
+    //Eg: how to use ImGui_ImplDX12_Init
+    CreateImGuiFontDescriptorHeap();
+    ImGui_ImplDX12_Init(m_device.Get(),
+                        NUM_FRAMES_IN_FLIGHT,
+                        DXGI_FORMAT_R8G8B8A8_UNORM,
+                        m_imguiFontDescriptorHeap.Get(),
+                        m_imguiFontDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+                        m_imguiFontDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
     
     //If custom fonts are needed, they are to be implemented in this part of the initialization. For now, default font is fine.
     //The procedure to load and use fonts is as explained below:
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - If no fonts are loaded,  dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
     // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
@@ -1218,4 +1256,12 @@ void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
+}
+
+void D3D12HelloTriangle::ConstructFrontEndUI()
+{
+    if (showDemoUI)
+    {
+        ImGui::ShowDemoWindow(&showDemoUI);
+    }
 }

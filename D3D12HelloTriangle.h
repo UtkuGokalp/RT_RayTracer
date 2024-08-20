@@ -87,6 +87,7 @@ private:
 	void CheckRaytracingSupport();
 
 	virtual void OnKeyUp(UINT8 key);
+	virtual void OnKeyDown(UINT8 key);
 
 	// #DXR
 	struct AccelerationStructureBuffers
@@ -212,4 +213,8 @@ private:
 	ComPtr<ID3D12RootSignature> m_shadowSignature;
 
 	void InitializeImGuiContext(bool darkTheme = true);
+	bool showDemoUI = false;
+	void CreateImGuiFontDescriptorHeap();
+	ComPtr<ID3D12DescriptorHeap> m_imguiFontDescriptorHeap;
+	void ConstructFrontEndUI();
 };
