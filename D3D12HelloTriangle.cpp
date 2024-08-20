@@ -504,13 +504,13 @@ void D3D12HelloTriangle::PopulateCommandList()
         m_commandList->ResourceBarrier(1, &transition);
     }
 
-    //ImGui code goes here
+    //ImGui rendering code
     ImGui_ImplWin32_NewFrame();
     ImGui_ImplDX12_NewFrame();
     ImGui::NewFrame();
     ConstructFrontEndUI();
     ImGui::Render();
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.Get()); //Render ImGui
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.Get());
     ImGui::UpdatePlatformWindows();
     ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_commandList.Get());
 
