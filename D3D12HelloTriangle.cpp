@@ -1263,5 +1263,9 @@ void D3D12HelloTriangle::ConstructFrontEndUI()
     if (showDemoUI)
     {
         ImGui::ShowDemoWindow(&showDemoUI);
+        if (ImGui::Button("Quit", ImVec2(40, 20)))
+        {
+            exit(0);
+        }
     }
 }
