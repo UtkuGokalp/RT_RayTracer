@@ -20,6 +20,7 @@
 #include "imgui_impl_win32.h"
 #include "nv_helpers_dx12/TopLevelASGenerator.h"
 #include "nv_helpers_dx12/ShaderBindingTableGenerator.h"
+#include "UIConstructor.h"
 
 using namespace DirectX;
 
@@ -213,8 +214,7 @@ private:
 	ComPtr<ID3D12RootSignature> m_shadowSignature;
 
 	void InitializeImGuiContext(bool darkTheme = true);
-	bool showDemoUI = false;
 	void CreateImGuiFontDescriptorHeap();
 	ComPtr<ID3D12DescriptorHeap> m_imguiFontDescriptorHeap;
-	void ConstructFrontEndUI();
+	UIConstructor uiConstructor;
 };

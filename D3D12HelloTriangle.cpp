@@ -8,7 +8,7 @@
 // PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 //
 //*********************************************************
-
+#define _CRT_SECURE_NO_WARNINGS
 #include "stdafx.h"
 #include "D3D12HelloTriangle.h"
 #include "DXRHelper.h"
@@ -24,7 +24,8 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
     m_frameIndex(0),
     m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
     m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
-    m_rtvDescriptorSize(0)
+    m_rtvDescriptorSize(0),
+    uiConstructor(UIConstructor())
 {
 }
 
@@ -508,7 +509,7 @@ void D3D12HelloTriangle::PopulateCommandList()
     ImGui_ImplWin32_NewFrame();
     ImGui_ImplDX12_NewFrame();
     ImGui::NewFrame();
-    ConstructFrontEndUI();
+    uiConstructor.Construct();
     ImGui::Render();
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.Get());
     ImGui::UpdatePlatformWindows();
@@ -560,7 +561,7 @@ void D3D12HelloTriangle::OnKeyUp(UINT8 key)
     }
     if (key == VK_ADD)
     {
-        showDemoUI = !showDemoUI;
+        uiConstructor.SetDemoUIEnable(!uiConstructor.IsDemoUIShown());
     }
 }
 
@@ -1256,17 +1257,4 @@ void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
-}
-
-void D3D12HelloTriangle::ConstructFrontEndUI()
-{
-    if (showDemoUI)
-    {
-        ImGui::ShowDemoWindow(&showDemoUI);
-        
-        if (ImGui::Button("Quit", ImVec2(40, 20)))
-        {
-            exit(0);
-        }
-    }
 }
