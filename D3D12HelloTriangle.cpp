@@ -353,6 +353,7 @@ void D3D12HelloTriangle::OnRender()
 
     // Present the frame (first argument 1 for vsync enabled, 0 for vsync disabled).
     HRESULT result = m_swapChain->Present(1, 0);
+    
     //Whenever there is a bug in the code, the Present() function crashes.
     //The code below helps with debugging, which is why ThrowIfFailed() is separated here.
     if (result != S_OK)
@@ -370,10 +371,9 @@ void D3D12HelloTriangle::OnDestroy()
     // cleaned up by the destructor.
     WaitForPreviousFrame();
     //Cleanup ImGui
-    //ImGui_ImplDX12_Shutdown();
-    //ImGui_ImplWin32_Shutdown();
-    //ImGui::DestroyContext();
-    //TODO: Add ImGui cleanup here (it should be before closing the main window).
+    ImGui_ImplDX12_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
     CloseHandle(m_fenceEvent);
 }
 
@@ -1263,6 +1263,7 @@ void D3D12HelloTriangle::ConstructFrontEndUI()
     if (showDemoUI)
     {
         ImGui::ShowDemoWindow(&showDemoUI);
+        
         if (ImGui::Button("Quit", ImVec2(40, 20)))
         {
             exit(0);
