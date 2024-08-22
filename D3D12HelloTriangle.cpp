@@ -992,7 +992,15 @@ void D3D12HelloTriangle::CreateInstancePropertiesBuffer()
 
 void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
 {
-
+    InstanceProperties* current = nullptr;
+    CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
+    ThrowIfFailed(m_instancePropertiesBuffer->Map(0, &readRange, (void**)&current));
+    for (const auto& instance : m_instances)
+    {
+        current->objectToWorld = instance.second; //Set the matrix to the matrix set for instance.
+        current++; //Go to the next instance's address
+    }
+    m_instancePropertiesBuffer->Unmap(0, nullptr);
 }
 
 void D3D12HelloTriangle::OnButtonDown(UINT32 lParam)
