@@ -941,7 +941,10 @@ void D3D12HelloTriangle::CreateCameraBuffer()
     // Create the constant buffer for all matrices
     m_cameraBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), m_cameraBufferSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
     //Descriptor heap that will be used by the rasterization shaders
-    m_constHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    // #DXR Extra - Refitting
+    // Create a descriptor heap that will be used by the rasterization shaders:
+    // Camera matrices and per-instance matrices
+    m_constHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 2, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     // Describe and create the constant buffer view.
     D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
@@ -951,6 +954,20 @@ void D3D12HelloTriangle::CreateCameraBuffer()
     // Get a handle to the heap memory on the CPU side, to be able to write the descriptors directly
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = m_constHeap->GetCPUDescriptorHandleForHeapStart();
     m_device->CreateConstantBufferView(&cbvDesc, srvHandle);
+
+    // #DXR Extra - Refitting
+    // Add the per-instance buffer
+    srvHandle.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.NumElements = (UINT)m_instances.size();
+    srvDesc.Buffer.StructureByteStride = sizeof(InstanceProperties);
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    // Write the per-instance buffer view in the heap
+    m_device->CreateShaderResourceView(m_instancePropertiesBuffer.Get(), &srvDesc, srvHandle);
 }
 
 void D3D12HelloTriangle::UpdateCameraBuffer()
