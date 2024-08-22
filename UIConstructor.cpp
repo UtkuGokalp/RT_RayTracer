@@ -6,6 +6,9 @@ UIConstructor::UIConstructor()
     lightColor[0] = 1.0f;
     lightColor[1] = 1.0f;
     lightColor[2] = 1.0f;
+    //This initialization is written bc currently the default rendering mode is raytracing.
+    //This should be updated from the D3D12HelloTriangle.cpp, OnInit() method.
+    isUsingRaytracing = true;
 }
 
 void UIConstructor::Construct()
@@ -15,6 +18,11 @@ void UIConstructor::Construct()
     {
         ImGui::ShowDemoWindow();
     }
+
+    //Rendering mode display
+    ImGui::Begin("Rendering Mode");
+    ImGui::Text("%s", isUsingRaytracing ? "Raytracing" : "Rasterization");
+    ImGui::End();
 
     //File Selection
     ImGui::Begin("File Selection");
@@ -46,4 +54,9 @@ bool UIConstructor::IsDemoUIShown()
 std::array<float, 3> UIConstructor::GetLightColor()
 {
     return { lightColor[0], lightColor[1], lightColor[2] };
+}
+
+void UIConstructor::SetRenderingMode(bool usingRaytracing)
+{
+    isUsingRaytracing = usingRaytracing;
 }

@@ -31,6 +31,7 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
 
 void D3D12HelloTriangle::OnInit()
 {
+    uiConstructor.SetRenderingMode(!m_raster);
     //Setup for camera movement and rotation
     nv_helpers_dx12::CameraManip.setWindowSize(GetWidth(), GetHeight());
     nv_helpers_dx12::CameraManip.setLookat(glm::vec3(1.5f, 1.5f, 1.5f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
@@ -558,6 +559,7 @@ void D3D12HelloTriangle::OnKeyUp(UINT8 key)
     if (key == VK_SPACE)
     {
         m_raster = !m_raster;
+        uiConstructor.SetRenderingMode(!m_raster);
     }
     if (key == VK_ADD)
     {
