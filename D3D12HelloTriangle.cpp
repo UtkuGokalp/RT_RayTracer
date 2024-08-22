@@ -96,7 +96,7 @@ void D3D12HelloTriangle::LoadPipeline()
     {
         ComPtr<IDXGIAdapter> warpAdapter;
         ThrowIfFailed(factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
-        
+
         ThrowIfFailed(D3D12CreateDevice(
             warpAdapter.Get(),
             D3D_FEATURE_LEVEL_12_1,
@@ -355,7 +355,7 @@ void D3D12HelloTriangle::OnRender()
 
     // Present the frame (first argument 1 for vsync enabled, 0 for vsync disabled).
     HRESULT result = m_swapChain->Present(1, 0);
-    
+
     //Whenever there is a bug in the code, the Present() function crashes.
     //The code below helps with debugging, which is why ThrowIfFailed() is separated here.
     if (result != S_OK)
@@ -581,22 +581,22 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
 
     //Step one: Gathering the geometry
     nv_helpers_dx12::BottomLevelASGenerator bottomLevelAS;
-    
+
     // #DXR Extra: Indexed Geometry
     for (size_t i = 0; i < vVertexBuffers.size(); i++)
     {
         if (i < vIndexBuffers.size() && vIndexBuffers[i].second > 0)
         {
             bottomLevelAS.AddVertexBuffer(vVertexBuffers[i].first.Get(), 0,
-                                          vVertexBuffers[i].second, sizeof(Vertex),
-                                          vIndexBuffers[i].first.Get(), 0,
-                                          vIndexBuffers[i].second, nullptr, 0, true);
+                vVertexBuffers[i].second, sizeof(Vertex),
+                vIndexBuffers[i].first.Get(), 0,
+                vIndexBuffers[i].second, nullptr, 0, true);
         }
         else
         {
             bottomLevelAS.AddVertexBuffer(vVertexBuffers[i].first.Get(), 0,
-                                          vVertexBuffers[i].second, sizeof(Vertex), 0,
-                                          0);
+                vVertexBuffers[i].second, sizeof(Vertex), 0,
+                0);
         }
     }
 
@@ -674,10 +674,10 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     // #DXR Extra: Indexed Geometry
     // Build the bottom AS from the Menger Sponge vertex buffer
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
-                                                                                 { { m_mengerIB.Get(), m_mengerIndexCount } });
+                                                                                { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
-    m_instances = { { mengerBottomLevelBuffers.pResult, XMMatrixIdentity() },
-                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.0f, 0.0f) }};
+    m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() },
+                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.1f, 0.0f) } };
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -904,7 +904,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_mengerVB->GetGPUVirtualAddress(),
                                            (void*)m_mengerIB->GetGPUVirtualAddress(),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress() });
-    
+
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
@@ -1143,7 +1143,7 @@ void D3D12HelloTriangle::CreateMengerSpongeVB()
         m_mengerVBView.StrideInBytes = sizeof(Vertex);
         m_mengerVBView.SizeInBytes = mengerVBSize;
     }
-    
+
     {
         const UINT mengerIBSize = (UINT)indices.size() * sizeof(UINT);
 
@@ -1170,7 +1170,7 @@ void D3D12HelloTriangle::CreateMengerSpongeVB()
         m_mengerIBView.Format = DXGI_FORMAT_R32_UINT;
         m_mengerIBView.SizeInBytes = mengerIBSize;
     }
-    m_mengerIndexCount  = (UINT)indices.size();
+    m_mengerIndexCount = (UINT)indices.size();
     m_mengerVertexCount = (UINT)vertices.size();
 }
 
@@ -1185,13 +1185,13 @@ void D3D12HelloTriangle::CreateDepthBuffer()
     D3D12_HEAP_PROPERTIES depthHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
     D3D12_RESOURCE_DESC depthResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, m_width, m_height, 1, 1);
     depthResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-    
+
     // The depth values will be initialized to 1
     CD3DX12_CLEAR_VALUE depthOptimizedClearValue(DXGI_FORMAT_D32_FLOAT, 1.0f, 0);
 
     // Allocate the buffer itself, with a state allowing depth writes
     ThrowIfFailed(m_device->CreateCommittedResource(&depthHeapProperties, D3D12_HEAP_FLAG_NONE, &depthResourceDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, IID_PPV_ARGS(&m_depthStencil)));
-    
+
     // Write the depth buffer view into the depth buffer heap
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
     dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
@@ -1243,12 +1243,12 @@ void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
     //Eg: how to use ImGui_ImplDX12_Init
     CreateImGuiFontDescriptorHeap();
     ImGui_ImplDX12_Init(m_device.Get(),
-                        NUM_FRAMES_IN_FLIGHT,
-                        DXGI_FORMAT_R8G8B8A8_UNORM,
-                        m_imguiFontDescriptorHeap.Get(),
-                        m_imguiFontDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-                        m_imguiFontDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-    
+        NUM_FRAMES_IN_FLIGHT,
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        m_imguiFontDescriptorHeap.Get(),
+        m_imguiFontDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+        m_imguiFontDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
     //If custom fonts are needed, they are to be implemented in this part of the initialization. For now, default font is fine.
     //The procedure to load and use fonts is as explained below:
     // - If no fonts are loaded,  dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
