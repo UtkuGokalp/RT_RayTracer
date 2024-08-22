@@ -420,16 +420,16 @@ void D3D12HelloTriangle::PopulateCommandList()
         const float clearColor[] = { 0.03f, 0.35f, 0.43f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        //m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-        //m_commandList->IASetIndexBuffer(&m_indexBufferView);
-        //m_commandList->DrawIndexedInstanced(12, 1, 0, 0, 0);
+        m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+        m_commandList->IASetIndexBuffer(&m_indexBufferView);
+        m_commandList->DrawIndexedInstanced(12, 1, 0, 0, 0);
         m_commandList->IASetVertexBuffers(0, 1, &m_planeBufferView);
         m_commandList->DrawInstanced(6, 1, 0, 0);
         // #DXR Extra: Indexed Geometry
         // In a way similar to triangle rendering, rasterize the Menger Sponge
-        m_commandList->IASetVertexBuffers(0, 1, &m_mengerVBView);
-        m_commandList->IASetIndexBuffer(&m_mengerIBView);
-        m_commandList->DrawIndexedInstanced(m_mengerIndexCount, 1, 0, 0, 0);
+        //m_commandList->IASetVertexBuffers(0, 1, &m_mengerVBView);
+        //m_commandList->IASetIndexBuffer(&m_mengerIBView);
+        //m_commandList->DrawIndexedInstanced(m_mengerIndexCount, 1, 0, 0, 0);
     }
     else
     {
