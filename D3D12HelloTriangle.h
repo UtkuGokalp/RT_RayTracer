@@ -171,6 +171,15 @@ private:
 	// #DXR Extra - Refitting
 	uint32_t m_time = 0;
 
+	struct InstanceProperties
+	{
+		XMMATRIX objectToWorld;
+	};
+
+	ComPtr<ID3D12Resource> m_instancePropertiesBuffer;
+	void CreateInstancePropertiesBuffer();
+	void UpdateInstancePropertiesBuffer();
+
 	// #DXR Extra: Perspective Camera++
 	void OnButtonDown(UINT32) override;
 	void OnMouseMove(UINT8, UINT32) override;

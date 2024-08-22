@@ -981,6 +981,20 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
     m_cameraBuffer->Unmap(0, nullptr);
 }
 
+void D3D12HelloTriangle::CreateInstancePropertiesBuffer()
+{
+    // Allocate memory to hold per-instance information
+    uint32_t bufferSize = ROUND_UP((uint32_t)m_instances.size() * sizeof(InstanceProperties), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    // Create the constant buffer for all matrices
+    //This buffer is allocated on heap because it will be mapped afterwards (when UpdateInstancePropertiesBuffer() is called)
+    m_instancePropertiesBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), bufferSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+}
+
+void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
+{
+
+}
+
 void D3D12HelloTriangle::OnButtonDown(UINT32 lParam)
 {
     if (!ImGui::GetIO().WantCaptureMouse)
