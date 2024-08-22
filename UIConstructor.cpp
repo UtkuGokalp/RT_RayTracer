@@ -26,7 +26,7 @@ void UIConstructor::Construct()
 
     //File Selection
     ImGui::Begin("File Selection");
-    char temp[2] = { 0 };
+    char temp[121] = { 0 };
     ImGui::InputText("File Path", temp, 120); //TODO: Change temp to an actual buffer for the file path (120 characters + 1 for the null character should be enough)
 
     if (ImGui::Button("Load Model File", ImVec2(120, 20)))

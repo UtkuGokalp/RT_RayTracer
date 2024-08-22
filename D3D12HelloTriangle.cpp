@@ -556,7 +556,7 @@ void D3D12HelloTriangle::CheckRaytracingSupport()
 void D3D12HelloTriangle::OnKeyUp(UINT8 key)
 {
     // Alternate between rasterization and raytracing using the spacebar
-    if (key == VK_SPACE)
+    if (key == VK_SPACE && !ImGui::GetIO().WantCaptureKeyboard)
     {
         m_raster = !m_raster;
         uiConstructor.SetRenderingMode(!m_raster);
@@ -983,26 +983,32 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
 
 void D3D12HelloTriangle::OnButtonDown(UINT32 lParam)
 {
-    nv_helpers_dx12::CameraManip.setMousePosition(-GET_X_LPARAM(lParam), -GET_Y_LPARAM(lParam));
+    if (!ImGui::GetIO().WantCaptureMouse)
+    {
+        nv_helpers_dx12::CameraManip.setMousePosition(-GET_X_LPARAM(lParam), -GET_Y_LPARAM(lParam));
+    }
 }
 
 void D3D12HelloTriangle::OnMouseMove(UINT8 wParam, UINT32 lParam)
 {
-    using nv_helpers_dx12::Manipulator;
-    Manipulator::Inputs inputs;
-    inputs.lmb = wParam & MK_LBUTTON;
-    inputs.mmb = wParam & MK_MBUTTON;
-    inputs.rmb = wParam & MK_RBUTTON;
-    if (!inputs.lmb && !inputs.rmb && !inputs.mmb)
+    if (!ImGui::GetIO().WantCaptureMouse)
     {
-        return; //No mouse buttons pressed
+        using nv_helpers_dx12::Manipulator;
+        Manipulator::Inputs inputs;
+        inputs.lmb = wParam & MK_LBUTTON;
+        inputs.mmb = wParam & MK_MBUTTON;
+        inputs.rmb = wParam & MK_RBUTTON;
+        if (!inputs.lmb && !inputs.rmb && !inputs.mmb)
+        {
+            return; //No mouse buttons pressed
+        }
+
+        inputs.ctrl = GetAsyncKeyState(VK_CONTROL);
+        inputs.shift = GetAsyncKeyState(VK_SHIFT);
+        inputs.alt = GetAsyncKeyState(VK_MENU);
+
+        CameraManip.mouseMove(-GET_X_LPARAM(lParam), -GET_Y_LPARAM(lParam), inputs);
     }
-
-    inputs.ctrl = GetAsyncKeyState(VK_CONTROL);
-    inputs.shift = GetAsyncKeyState(VK_SHIFT);
-    inputs.alt = GetAsyncKeyState(VK_MENU);
-
-    CameraManip.mouseMove(-GET_X_LPARAM(lParam), -GET_Y_LPARAM(lParam), inputs);
 }
 
 // #DXR Extra: Per-Instance Data
