@@ -15,6 +15,13 @@ struct PSInput
 	float4 color : COLOR;
 };
 
+struct InstanceProperties
+{
+    float4x4 objectToWorld;
+};
+
+StructuredBuffer<InstanceProperties> instanceProps : register(t0);
+
 //The necessary matrices for rasterizer are in the beginning of the
 //camera buffer, so we only declare those
 cbuffer CameraParams : register(b0)
@@ -22,6 +29,8 @@ cbuffer CameraParams : register(b0)
     float4x4 view;
     float4x4 projection;
 }
+
+uint instanceIndex : register(b1);
 
 PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
 {
@@ -33,6 +42,7 @@ PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
     pos = mul(projection, pos);
 	result.position = pos;
 	result.color = color;
+    pos = mul(instanceProps[instanceIndex].objectToWorld, position);
 
 	return result;
 }

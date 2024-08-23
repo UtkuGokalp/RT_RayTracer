@@ -52,6 +52,8 @@ void D3D12HelloTriangle::OnInit()
     CreateGlobalConstantBuffer();
     // Allocate the buffer storing the raytracing output
     CreateRaytracingOutputBuffer();
+    // #DXR Extra - Refitting
+    CreateInstancePropertiesBuffer();
     // #DXR Extra: Perspective Camera
     // Create a buffer to store the modelview and perspective camera matrices
     CreateCameraBuffer();
@@ -195,8 +197,22 @@ void D3D12HelloTriangle::LoadAssets()
         range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
         constantParameter.InitAsDescriptorTable(1, &range, D3D12_SHADER_VISIBILITY_ALL);
 
+        // #DXR Extra - Refitting
+        // Per-instance properties buffer
+        CD3DX12_ROOT_PARAMETER matricesParameter;
+        CD3DX12_DESCRIPTOR_RANGE matricesRange;
+        matricesRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1/*descriptor count*/, 0/*register*/, 0/*space (space0)*/, 1/*heap slot*/);
+        matricesParameter.InitAsDescriptorTable(1, &matricesRange, D3D12_SHADER_VISIBILITY_ALL);
+
+        // #DXR Extra - Refitting
+        // Per-instance properties index for the current geometry
+        CD3DX12_ROOT_PARAMETER indexParameter;
+        indexParameter.InitAsConstants(1 /*value count*/, 1/*register*/);
+
+        std::vector<CD3DX12_ROOT_PARAMETER> params = { constantParameter, matricesParameter, indexParameter };
+
         CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-        rootSignatureDesc.Init(1, &constantParameter, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+        rootSignatureDesc.Init((UINT)params.size(), params.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
         ComPtr<ID3DBlob> signature;
         ComPtr<ID3DBlob> error;
@@ -337,6 +353,8 @@ void D3D12HelloTriangle::OnUpdate()
     // #DXR Extra: Perspective Camera
     UpdateCameraBuffer();
     // #DXR Extra - Refitting
+    UpdateInstancePropertiesBuffer();
+    // #DXR Extra - Refitting
     // Increment the time counter at each frame, and update the corresponding instance matrix of the
     // first triangle to animate its position
     m_time++;
@@ -415,13 +433,22 @@ void D3D12HelloTriangle::PopulateCommandList()
         // #DXR Extra: Perspective Camera
         std::vector<ID3D12DescriptorHeap*> heaps = { m_constHeap.Get() };
         m_commandList->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-        // set the root descriptor table 0 to the constant buffer descriptor heap
-        m_commandList->SetGraphicsRootDescriptorTable(0, m_constHeap->GetGPUDescriptorHandleForHeapStart());
+        // #DXR Extra - Refitting
+        D3D12_GPU_DESCRIPTOR_HANDLE handle = m_constHeap->GetGPUDescriptorHandleForHeapStart();
+        // Access to the camera buffer, 1st parameter of the root signature
+        m_commandList->SetGraphicsRootDescriptorTable(0, handle);
+        // Access to the per-instance properties buffer, 2nd parameter of the root signature
+        m_commandList->SetGraphicsRootDescriptorTable(1, handle);
+        // Instance index in the per-instance properties buffer, 3rd parameter of the root signature
+        // Here we set the value to 0, and since we have only 1 constant, the offset is 0 as well
+        m_commandList->SetGraphicsRoot32BitConstant(2, 0, 0);
         const float clearColor[] = { 0.03f, 0.35f, 0.43f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        //Render tetrahedron
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
         m_commandList->IASetIndexBuffer(&m_indexBufferView);
+        //Render plane
         m_commandList->DrawIndexedInstanced(12, 1, 0, 0, 0);
         m_commandList->IASetVertexBuffers(0, 1, &m_planeBufferView);
         m_commandList->DrawInstanced(6, 1, 0, 0);
