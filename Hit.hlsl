@@ -6,6 +6,13 @@ struct ShadowHitInfo
     bool isHit;
 };
 
+//# DXR Extra - Simple Lighting
+struct InstanceProperties
+{
+    float4x4 objectToWorld;
+    float4x4 objectToWorldNormal;
+};
+
 //This structure has the same bit mapping as the "Vertex" structure on the CPU side.
 struct STriVertex
 {
@@ -18,6 +25,8 @@ StructuredBuffer<int> indices : register(t1);
 // #DXR Extra - Another ray type
 // Raytracing TLAS, accessed as a SRV
 RaytracingAccelerationStructure SceneBVH : register(t2);
+//# DXR Extra - Simple Lighting
+StructuredBuffer<InstanceProperties> instanceProps : register(t3);
 
 cbuffer Colors : register(b0)
 {
@@ -36,15 +45,23 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     uint vertId = 3 * PrimitiveIndex();
     
     // #DXR Extra: Per-Instance Data
-    float3 hitColor = float3(0.6f, 0.7f, 0.6f);
-    // Shade only the first 3 instances (triangles)
-    //if (InstanceID() < 3)
-    {
-        hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
-                   BTriVertex[indices[vertId + 1]].color * barycentrics.y +
-                   BTriVertex[indices[vertId + 2]].color * barycentrics.z;
-    }
+    float3 hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
+                      BTriVertex[indices[vertId + 1]].color * barycentrics.y +
+                      BTriVertex[indices[vertId + 2]].color * barycentrics.z;
     
+    //# DXR Extra - Simple Lighting
+    //Normal computation
+    float3 e1 = BTriVertex[indices[vertId + 1]].vertex - BTriVertex[indices[vertId + 0]].vertex;
+    float3 e2 = BTriVertex[indices[vertId + 2]].vertex - BTriVertex[indices[vertId + 0]].vertex;
+    float3 normal = normalize(cross(e2, e1));
+    normal = mul(instanceProps[InstanceID()].objectToWorld, float4(normal, 0.0f)).xyz;
+    //Position and direction computations related to lighting
+    float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 lightPos = float3(2, 2, -2);
+    float3 centerLightDir = normalize(lightPos - worldOrigin);
+    float nDotL = max(0.0f, dot(normal, centerLightDir));
+    
+    hitColor *= nDotL;
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
 
@@ -58,6 +75,24 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     //Calculate the direction towards the light from the position of the ray that hit the plane
     float3 lightDir = normalize(lightPos - worldOrigin);
+
+    //# DXR Extra - Simple Lighting
+    uint vertId = 3 * PrimitiveIndex();
+    float3 e1 = BTriVertex[vertId + 1].vertex - BTriVertex[vertId + 0].vertex;
+    float3 e2 = BTriVertex[vertId + 2].vertex - BTriVertex[vertId + 0].vertex;
+    float3 normal = normalize(cross(e2, e1));
+    normal = mul(instanceProps[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
+    
+    //The plane is double-sided, so we need to check whether we hit the front or back face of the plane.
+    bool isBackFacing = dot(normal, WorldRayDirection()) > 0.0f;
+    if (isBackFacing)
+    {
+        normal = -normal;
+    }
+    
+    float3 centerLightDir = normalize(lightPos - worldOrigin);
+    bool isShadowed = dot(normal, centerLightDir) < 0.0f;
+    
     // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
     RayDesc ray;
     ray.Origin = worldOrigin;
@@ -106,5 +141,15 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     );
     float shadowFactor = shadowPayload.isHit ? 0.3f : 1.0f;
     float3 hitColor = float3(0.7f, 0.7f, 0.3f) * shadowFactor;
-    payload.colorAndDistance = float4(hitColor, RayTCurrent());
+    
+    if (!isShadowed)
+    {
+        isShadowed = shadowPayload.isHit;
+    }
+    
+    // # DXR Extra - Simple Lighting
+    float factor = isShadowed ? 0.3 : 1.0;
+    float nDotL = max(0.f, dot(normal, lightDir));
+    hitColor = float3(0.7, 0.7, 0.7) * nDotL * factor;
+    payload.colorAndDistance = float4(hitColor, 1);
 }
