@@ -753,21 +753,12 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     // constant buffer. Here we bind the buffer to the first slot, accessible in
     // HLSL as register(b0)
     //rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
-#pragma endregion
-
     rsg.AddHeapRangesParameter(
-        {
-            { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ },
-            { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV/*Scene Data*/, 2},
-            //# DXR Extra - Simple Lighting
-            { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV/*Per Instance Data*/, 3},
-        }
-    );
-    //The code below came from the tutorial
-    //{ //{ 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ },
-          //{ 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV/*Scene Data*/, 2},
+        { { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ },
+          { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV/*Scene Data*/, 2},
           //# DXR Extra - Simple Lighting
-          //{ 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV/*Per Instance Data*/, 3} }
+          { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV/*Per Instance Data*/, 3}}
+    );
     return rsg.Generate(m_device.Get(), true);
 }
 
