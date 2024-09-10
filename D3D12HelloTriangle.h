@@ -69,7 +69,7 @@ private:
 	UINT m_rtvDescriptorSize;
 
 	// App resources.
-	ComPtr<ID3D12Resource> m_vertexBuffer;
+	ComPtr<ID3D12Resource> m_tetrahedronVB;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 
 	// Synchronization objects.
@@ -174,6 +174,8 @@ private:
 	struct InstanceProperties
 	{
 		XMMATRIX objectToWorld;
+		//# DXR Extra - Simple Lighting
+		XMMATRIX objectToWorldNormal;
 	};
 
 	ComPtr<ID3D12Resource> m_instancePropertiesBuffer;
@@ -203,7 +205,7 @@ private:
 	void CreatePerInstanceConstantBuffers();
 	std::vector<ComPtr<ID3D12Resource>> m_perInstanceConstantBuffers;
 
-	ComPtr<ID3D12Resource> m_indexBuffer;
+	ComPtr<ID3D12Resource> m_tetrahedronIB;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 
 	void CreateMengerSpongeVB();

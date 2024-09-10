@@ -18,6 +18,8 @@ struct PSInput
 struct InstanceProperties
 {
     float4x4 objectToWorld;
+	//# DXR Extra - Simple Lighting
+    float4x4 objectToWorldNormal;
 };
 
 StructuredBuffer<InstanceProperties> instanceProps : register(t0);
@@ -37,12 +39,12 @@ PSInput VSMain(float4 position : POSITION, float4 color : COLOR)
 	PSInput result;
 
 	// #DXR Extra: Perspective Camera
-	
-    float4 pos = mul(instanceProps[instanceIndex].objectToWorld, position);
+    float4 pos = position;
     pos = mul(view, pos);
     pos = mul(projection, pos);
 	result.position = pos;
 	result.color = color;
+    pos = mul(instanceProps[instanceIndex].objectToWorld, position);
 
 	return result;
 }
