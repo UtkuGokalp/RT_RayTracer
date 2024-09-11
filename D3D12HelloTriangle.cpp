@@ -762,7 +762,7 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateMissSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     return rsg.Generate(m_device.Get(), true);
 }
-
+ 
 void D3D12HelloTriangle::CreateRaytracingPipeline()
 {
     // The raytracing pipeline binds the shader code, root signatures and pipeline
