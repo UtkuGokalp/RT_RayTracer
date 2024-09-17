@@ -18,6 +18,8 @@ struct PSInput
 struct InstanceProperties
 {
     float4x4 objectToWorld;
+	// #DXR Extra - Simple Lighting
+    float4x4 objectToWorldNormal; //Not used here, used for raytracing. Here only for alignment.
 };
 
 StructuredBuffer<InstanceProperties> instanceProps : register(t0);
