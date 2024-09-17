@@ -870,8 +870,8 @@ void D3D12HelloTriangle::CreateRaytracingOutputBuffer()
 //Create the main heap used by shaders, which allows access to the raytracing output and the TLAS
 void D3D12HelloTriangle::CreateShaderResourceHeap()
 {
-    //3 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS and 1 CBV for camera matrices
-    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    //4 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting
+    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 4, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     //Get a handle to te heap memory on the CPU side so that descriptors can be directly written to
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle_cpu = m_srvUavHeap->GetCPUDescriptorHandleForHeapStart();
@@ -900,6 +900,18 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
     cbvDesc.BufferLocation = m_cameraBuffer->GetGPUVirtualAddress();
     cbvDesc.SizeInBytes = m_cameraBufferSize;
     m_device->CreateConstantBufferView(&cbvDesc, srvHandle_cpu);
+
+    //#DXR Extra - Simple Lighting
+    srvHandle_cpu.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.NumElements = (UINT)m_instances.size();
+    srvDesc.Buffer.StructureByteStride = sizeof(InstanceProperties);
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    // Write the per-instance properties buffer view in the heap
+    m_device->CreateShaderResourceView(m_instancePropertiesBuffer.Get(), &srvDesc, srvHandle_cpu);
 }
 
 void D3D12HelloTriangle::CreateShaderBindingTable()
@@ -1042,6 +1054,18 @@ void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
     for (const auto& instance : m_instances)
     {
         current->objectToWorld = instance.second; //Set the matrix to the matrix set for instance.
+        //#DXR Extra - Simple Lighting
+        XMMATRIX upper3x3 = instance.second;
+        // Remove the translation and lower vector of the matrix
+        upper3x3.r[0].m128_f32[3] = 0.f;
+        upper3x3.r[1].m128_f32[3] = 0.f;
+        upper3x3.r[2].m128_f32[3] = 0.f;
+        upper3x3.r[3].m128_f32[0] = 0.f;
+        upper3x3.r[3].m128_f32[1] = 0.f;
+        upper3x3.r[3].m128_f32[2] = 0.f;
+        upper3x3.r[3].m128_f32[3] = 1.f;
+        XMVECTOR det;
+        current->objectToWorld = XMMatrixTranspose(XMMatrixInverse(&det, upper3x3));
         current++; //Go to the next instance's address
     }
     m_instancePropertiesBuffer->Unmap(0, nullptr);
