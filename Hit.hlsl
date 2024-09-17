@@ -52,6 +52,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 [shader("closesthit")]
 void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
 {
+    
     // #DXR Extra - Another ray type
     float3 lightPos = float3(2, 2, -2);
     //Find the hit position in world space
@@ -59,6 +60,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     //Calculate the direction towards the light from the position of the ray that hit the plane
     float3 lightDir = normalize(lightPos - worldOrigin);
     // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
+    
     RayDesc ray;
     ray.Origin = worldOrigin;
     ray.Direction = lightDir;
@@ -68,9 +70,10 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // Initialize the ray payload
     ShadowHitInfo shadowPayload;
     shadowPayload.isHit = false;
+    
     TraceRay(
     // Acceleration structure
-    SceneBVH,
+    SceneBVH, //The problem is caused by improper data passing for this construct!!!!
     // Flags can be used to specify the behavior upon hitting a surface
     RAY_FLAG_NONE,
     // Instance inclusion mask, which can be used to mask out some geometry to

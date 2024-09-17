@@ -741,9 +741,19 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices and colors
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
+
+    rsg.AddHeapRangesParameter(
+        {
+          { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ },
+          { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Scene data*/, 2 },
+          // # DXR Extra - Simple Lighting
+          { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3 }
+        });
+
+
     // #DXR Extra - Another ray type
     // Add a single range pointing to the TLAS in the heap
-    rsg.AddHeapRangesParameter({ { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ } });
+    //rsg.AddHeapRangesParameter({ { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ } });
     // #DXR Extra: Per-Instance Data
     // The vertex colors may differ for each instance, so it is not possible to
     // point to a single buffer in the heap. Instead we use the concept of root
@@ -751,11 +761,11 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     // shader binding table we will associate each hit shader instance with its
     // constant buffer. Here we bind the buffer to the first slot, accessible in
     // HLSL as register(b0)
-    rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
+    //rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
 
     //If there is a problem check this part again, maybe merge t2 and CBV with this one the way it is shown in the tutorial.
     // #DXR Extra - Simple Lighting
-    rsg.AddHeapRangesParameter({ {3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3} });
+    //rsg.AddHeapRangesParameter({ {3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3} });
 
     return rsg.Generate(m_device.Get(), true);
 }
@@ -954,7 +964,14 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
 
     // #DXR Extra: Per-Instance Data
     // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
-    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { heapPointer }); //(void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()),
+    //m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { heapPointer }); //(void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()),
+    m_sbtHelper.AddHitGroup(L"PlaneHitGroup",
+        {
+            (void*)m_planeBuffer->GetGPUVirtualAddress(),
+            (void*)(m_globalConstantBuffer->GetGPUVirtualAddress()),
+            heapPointer,
+            //nullptr, //Why is this even here??
+        });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
