@@ -752,6 +752,11 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     // constant buffer. Here we bind the buffer to the first slot, accessible in
     // HLSL as register(b0)
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
+
+    //If there is a problem check this part again, maybe merge t2 and CBV with this one the way it is shown in the tutorial.
+    // #DXR Extra - Simple Lighting
+    rsg.AddHeapRangesParameter({ {3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3} });
+
     return rsg.Generate(m_device.Get(), true);
 }
 
