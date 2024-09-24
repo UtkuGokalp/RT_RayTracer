@@ -37,8 +37,14 @@ void UIConstructor::Construct()
 
     //Lighting controls
     ImGui::Begin("Lighting");
-    ImGui::ColorEdit3("Light Color", lightColor);
+    ImGui::SliderFloat("Light Intensity", &lightIntensity, 0.0f, 1.0f, "%.2f");
+    ImGui::ColorPicker3("Light Color", lightColor);
     ImGui::End();
+}
+
+float UIConstructor::GetLightIntensity()
+{
+    return lightIntensity;
 }
 
 void UIConstructor::SetDemoUIEnable(bool enabled)

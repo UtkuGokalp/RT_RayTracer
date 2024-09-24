@@ -61,8 +61,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 lightPos = float3(2, 2, -2);
     float3 centerLightDir = normalize(lightPos - worldOrigin);
-
-    float nDotL = max(0.0f, dot(normal, centerLightDir));
+    
+    float lightIntensity = dot(normal, centerLightDir);
+    lightIntensity = 1.0f;
+    float nDotL = max(0.0f, lightIntensity);
 
     hitColor *= nDotL;
     
@@ -151,7 +153,9 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
         isShadowed = shadowPayload.isHit;
     }
     float factor = isShadowed ? 0.3 : 1.0;
-    float nDotL = max(0.f, dot(normal, lightDir));
+    float lightIntensity = dot(normal, lightDir);
+    lightIntensity = 1.0f;
+    float nDotL = max(0.f, lightIntensity);
     float3 hitColor = float3(0.7, 0.7, 0.7) * nDotL * factor;
     payload.colorAndDistance = float4(hitColor, 1);
 }
