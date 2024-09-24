@@ -942,24 +942,20 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"ShadowMiss", {});
 
     // Hit shader setup
-    // #DXR Extra: Per-Instance Data
-    // We have 3 triangles, each of which needs to access its own constant buffer
-    // as a root parameter in its primary hit shader. The shadow hit only sets a
-    // boolean visibility in the payload, and does not require external data
     m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_mengerVB->GetGPUVirtualAddress(),
                                            (void*)m_mengerIB->GetGPUVirtualAddress(),
-                                           (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress() });
-
+                                           (void*)(heapPointer),
+                                           (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
+                                           (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
+                                         });
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
     // #DXR Extra: Per-Instance Data
-    // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
-    //m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { heapPointer }); //(void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()),
     m_sbtHelper.AddHitGroup(L"PlaneHitGroup",
         {
             (void*)m_planeBuffer->GetGPUVirtualAddress(),
-            (void*)(m_globalConstantBuffer->GetGPUVirtualAddress()),
+            (void*)m_globalConstantBuffer->GetGPUVirtualAddress(),
             heapPointer,
             //nullptr, //Why is this even here??
         });
@@ -1067,7 +1063,7 @@ void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
     for (const auto& instance : m_instances)
     {
         current->objectToWorld = instance.second; //Set the matrix to the matrix set for instance.
-        //#DXR Extra - Simple Lighting
+        // #DXR Extra - Simple Lighting
         XMMATRIX upper3x3 = instance.second;
         // Remove the translation and lower vector of the matrix
         upper3x3.r[0].m128_f32[3] = 0.f;

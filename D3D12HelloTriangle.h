@@ -193,7 +193,7 @@ private:
 	/// Creates a vertex buffer for the plane.
 	/// </summary>
 	void CreatePlaneVB();
-
+	
 	// #DXR Extra: Per-Instance Data
 	ComPtr<ID3D12Resource>m_globalConstantBuffer;
 	void CreateGlobalConstantBuffer();

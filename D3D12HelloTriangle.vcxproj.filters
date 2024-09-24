@@ -226,7 +226,6 @@
     <ClCompile Include="ImGui\imgui_impl_dx12.cpp" />
     <ClCompile Include="ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="UIConstructor.cpp" />
-    <ClCompile Include="test.txt" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shaders.hlsl">
