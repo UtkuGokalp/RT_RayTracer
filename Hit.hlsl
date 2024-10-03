@@ -63,8 +63,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 centerLightDir = normalize(lightPos - worldOrigin);
     
     float factor = dot(normal, centerLightDir);
-    float lightIntensity = max(0.0f, factor);
-
+    
+    float lightIntensity = factor; //max(0.0f, factor);
     hitColor *= lightIntensity;
     
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
@@ -88,7 +88,9 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float3 e2 = BTriVertex[vertId + 2].vertex - BTriVertex[vertId + 0].vertex;
     float3 normal = normalize(cross(e2, e1));
 
-    normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
+    //The lighting for the plane works without this line (and doesn't work with it), probably because it is a very simple geometry
+    //with very simple normals. The reason for this is because the same line also somewhat works with the tetrahedron but not quite.
+    //normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
     
     bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
     if (isBackFacing)
@@ -151,9 +153,9 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     {
         isShadowed = shadowPayload.isHit;
     }
-    float shadowFactor = isShadowed ? 0.3 : 1.0;
+    float shadowFactor = isShadowed ? 0.3f : 1.0f;
     float multiplier = dot(normal, lightDir);
-    float lightIntensity = max(0.f, multiplier);
+    float lightIntensity = max(0.0f, multiplier);
     float3 hitColor = float3(0.7, 0.7, 0.7) * lightIntensity * shadowFactor;
     payload.colorAndDistance = float4(hitColor, 1);
 }

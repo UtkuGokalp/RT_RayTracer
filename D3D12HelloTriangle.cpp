@@ -779,6 +779,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     //First we compile the HLSL shaders to DXIL so that they can be used in GPUs.
     //The raytracing pipeline contains all the shaders that may be executed during the raytracing process.
     //The codes are separated semantically to raygen, miss and hit for clarity. Any code layout can be used.
+    //TODO: Check if CompileShaderLibrary can be modified to choose between compiling for debug and not
     m_rayGenLibrary = nv_helpers_dx12::CompileShaderLibrary(L"RayGen.hlsl");
     m_missLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Miss.hlsl");
     m_hitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Hit.hlsl");
