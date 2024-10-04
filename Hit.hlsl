@@ -56,7 +56,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 e1 = BTriVertex[indices[vertId + 1]].vertex - BTriVertex[indices[vertId + 0]].vertex;
     float3 e2 = BTriVertex[indices[vertId + 2]].vertex - BTriVertex[indices[vertId + 0]].vertex;
     float3 normal = normalize(cross(e2, e1));
-    normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
+    normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
     
     float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 lightPos = float3(2, 2, -2);
@@ -64,7 +64,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     float factor = dot(normal, centerLightDir);
     
-    float lightIntensity = factor; //max(0.0f, factor);
+    float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
     
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
@@ -87,10 +87,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float3 e1 = BTriVertex[vertId + 1].vertex - BTriVertex[vertId + 0].vertex;
     float3 e2 = BTriVertex[vertId + 2].vertex - BTriVertex[vertId + 0].vertex;
     float3 normal = normalize(cross(e2, e1));
-
-    //The lighting for the plane works without this line (and doesn't work with it), probably because it is a very simple geometry
-    //with very simple normals. The reason for this is because the same line also somewhat works with the tetrahedron but not quite.
-    //normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
+    normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
     
     bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
     if (isBackFacing)

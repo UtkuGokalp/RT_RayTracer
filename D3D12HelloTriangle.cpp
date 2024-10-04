@@ -1075,7 +1075,7 @@ void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
         upper3x3.r[3].m128_f32[2] = 0.f;
         upper3x3.r[3].m128_f32[3] = 1.f;
         XMVECTOR det;
-        current->objectToWorld = XMMatrixTranspose(XMMatrixInverse(&det, upper3x3));
+        current->objectToWorldNormal = XMMatrixTranspose(XMMatrixInverse(&det, upper3x3));
         current++; //Go to the next instance's address
     }
     m_instancePropertiesBuffer->Unmap(0, nullptr);
