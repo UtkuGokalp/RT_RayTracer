@@ -47,9 +47,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     // #DXR Extra: Per-Instance Data
     float3 hitColor = float3(0.6f, 0.7f, 0.6f);
     
-    hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
-               BTriVertex[indices[vertId + 1]].color * barycentrics.y +
-               BTriVertex[indices[vertId + 2]].color * barycentrics.z;
+    //hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
+    //           BTriVertex[indices[vertId + 1]].color * barycentrics.y +
+    //           BTriVertex[indices[vertId + 2]].color * barycentrics.z;
     
     // #DXR Extra - Simple Lighting
     //Calculate normals based on the vertices
@@ -58,15 +58,20 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 normal = normalize(cross(e2, e1));
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
     
+    //Check whether the worldOrigin and lightDirection calculations are correct or not
     float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 lightPos = float3(2, 2, -2);
     float3 centerLightDir = normalize(lightPos - worldOrigin);
     
     float factor = dot(normal, centerLightDir);
     
+    //lightPos = float3(-2, -2, 2);
+    //centerLightDir = normalize(lightPos - worldOrigin);
+    
+    //factor += abs(dot(normal, centerLightDir));
+    
     float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
-    
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
 
