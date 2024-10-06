@@ -59,9 +59,9 @@ static const D3D12_HEAP_PROPERTIES kDefaultHeapProps = {
 //--------------------------------------------------------------------------------------------------
 // Compile a HLSL file into a DXIL library
 //
-IDxcBlob* CompileShaderLibrary(LPCWSTR fileName)
+IDxcBlob* CompileShaderLibrary(LPCWSTR fileName, bool compileForDebug = false, std::string debugFileName = "ShaderDebug.pdb")
 {
-  static IDxcCompiler* pCompiler = nullptr;
+  static IDxcCompiler2* pCompiler = nullptr;
   static IDxcLibrary* pLibrary = nullptr;
   static IDxcIncludeHandler* dxcIncludeHandler;
 
@@ -91,8 +91,28 @@ IDxcBlob* CompileShaderLibrary(LPCWSTR fileName)
 
   // Compile
   IDxcOperationResult* pResult;
-  ThrowIfFailed(pCompiler->Compile(pTextBlob, fileName, L"", L"lib_6_3", nullptr, 0, nullptr, 0,
-                                   dxcIncludeHandler, &pResult));
+
+  if (compileForDebug)
+  {
+      ThrowIfFailed(pCompiler->CompileWithDebug(pTextBlob, fileName, L"", L"lib_6_3", nullptr, 0, nullptr, 0,
+          dxcIncludeHandler, &pResult, nullptr, nullptr));
+      std::ofstream debugFile(debugFileName, std::ios::out | std::ios::binary);
+      if (!debugFile)
+      {
+          //TODO: Find a better solution to this than just throwing an exception. Maybe just create a new file for it.
+          throw std::logic_error("Failed to open the debug file.");
+      }
+      IDxcBlob* pBlob;
+      ThrowIfFailed(pResult->GetResult(&pBlob));
+      debugFile.write((char*)pBlob->GetBufferPointer(), pBlob->GetBufferSize());
+      debugFile.close();
+  }
+  else
+  {
+      ThrowIfFailed(pCompiler->Compile(pTextBlob, fileName, L"", L"lib_6_3", nullptr, 0, nullptr, 0,
+          dxcIncludeHandler, &pResult));
+  }
+  
 
   // Verify the result
   HRESULT resultCode;

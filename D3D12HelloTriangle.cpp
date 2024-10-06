@@ -357,8 +357,8 @@ void D3D12HelloTriangle::OnUpdate()
     // #DXR Extra - Refitting
     // Increment the time counter at each frame, and update the corresponding instance matrix of the
     // first triangle to animate its position
-    m_time++;
-    m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
+    //m_time++;
+    //m_instances[0].second = XMMatrixRotationAxis({ 0.0f, 1.0f, 0.0f }, m_time / 50.0f) * XMMatrixTranslation(0.0f, 0.1f * cosf(m_time / 20.0f), 0.0f);
 }
 
 // Render the scene.
@@ -741,17 +741,23 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices and colors
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
-    // #DXR Extra - Another ray type
-    // Add a single range pointing to the TLAS in the heap
-    rsg.AddHeapRangesParameter({ { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ } });
-    // #DXR Extra: Per-Instance Data
-    // The vertex colors may differ for each instance, so it is not possible to
-    // point to a single buffer in the heap. Instead we use the concept of root
-    // parameters, which are defined directly by a pointer in memory. In the
-    // shader binding table we will associate each hit shader instance with its
-    // constant buffer. Here we bind the buffer to the first slot, accessible in
-    // HLSL as register(b0)
-    rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_CBV, 0);
+
+    rsg.AddHeapRangesParameter(
+        {
+            // #DXR Extra - Another ray type
+            // Add a single range pointing to the TLAS in the heap
+            { 2 /*t2*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /*2nd slot of the heap*/ },
+            // #DXR Extra: Per-Instance Data
+            // The vertex colors may differ for each instance, so it is not possible to
+            // point to a single buffer in the heap. Instead we use the concept of root
+            // parameters, which are defined directly by a pointer in memory. In the
+            // shader binding table we will associate each hit shader instance with its
+            // constant buffer. Here we bind the buffer to the first slot, accessible in
+            // HLSL as register(b0)
+            { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Scene data*/, 2 },
+            // # DXR Extra - Simple Lighting
+            { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3 }
+        });
     return rsg.Generate(m_device.Get(), true);
 }
 
@@ -773,6 +779,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     //First we compile the HLSL shaders to DXIL so that they can be used in GPUs.
     //The raytracing pipeline contains all the shaders that may be executed during the raytracing process.
     //The codes are separated semantically to raygen, miss and hit for clarity. Any code layout can be used.
+    //TODO: Check if CompileShaderLibrary can be modified to choose between compiling for debug and not
     m_rayGenLibrary = nv_helpers_dx12::CompileShaderLibrary(L"RayGen.hlsl");
     m_missLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Miss.hlsl");
     m_hitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Hit.hlsl");
@@ -870,8 +877,8 @@ void D3D12HelloTriangle::CreateRaytracingOutputBuffer()
 //Create the main heap used by shaders, which allows access to the raytracing output and the TLAS
 void D3D12HelloTriangle::CreateShaderResourceHeap()
 {
-    //3 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS and 1 CBV for camera matrices
-    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    //4 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting
+    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 4, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     //Get a handle to te heap memory on the CPU side so that descriptors can be directly written to
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle_cpu = m_srvUavHeap->GetCPUDescriptorHandleForHeapStart();
@@ -900,6 +907,18 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
     cbvDesc.BufferLocation = m_cameraBuffer->GetGPUVirtualAddress();
     cbvDesc.SizeInBytes = m_cameraBufferSize;
     m_device->CreateConstantBufferView(&cbvDesc, srvHandle_cpu);
+
+    //#DXR Extra - Simple Lighting
+    srvHandle_cpu.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.NumElements = (UINT)m_instances.size();
+    srvDesc.Buffer.StructureByteStride = sizeof(InstanceProperties);
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    // Write the per-instance properties buffer view in the heap
+    m_device->CreateShaderResourceView(m_instancePropertiesBuffer.Get(), &srvDesc, srvHandle_cpu);
 }
 
 void D3D12HelloTriangle::CreateShaderBindingTable()
@@ -924,20 +943,23 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"ShadowMiss", {});
 
     // Hit shader setup
-    // #DXR Extra: Per-Instance Data
-    // We have 3 triangles, each of which needs to access its own constant buffer
-    // as a root parameter in its primary hit shader. The shadow hit only sets a
-    // boolean visibility in the payload, and does not require external data
     m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_mengerVB->GetGPUVirtualAddress(),
                                            (void*)m_mengerIB->GetGPUVirtualAddress(),
-                                           (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress() });
-
+                                           (void*)(heapPointer),
+                                           (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
+                                           (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
+                                         });
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
     // #DXR Extra: Per-Instance Data
-    // The plane also uses a constant buffer for its vertex colors (for simplicity the plane uses the same buffer as the first instance triangle)
-    m_sbtHelper.AddHitGroup(L"PlaneHitGroup", { heapPointer }); //(void*)(m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress()),
+    m_sbtHelper.AddHitGroup(L"PlaneHitGroup",
+        {
+            (void*)m_planeBuffer->GetGPUVirtualAddress(),
+            (void*)m_globalConstantBuffer->GetGPUVirtualAddress(),
+            heapPointer,
+            //nullptr, //Why is this even here??
+        });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
@@ -1042,6 +1064,18 @@ void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
     for (const auto& instance : m_instances)
     {
         current->objectToWorld = instance.second; //Set the matrix to the matrix set for instance.
+        // #DXR Extra - Simple Lighting
+        XMMATRIX upper3x3 = instance.second;
+        // Remove the translation and lower vector of the matrix
+        upper3x3.r[0].m128_f32[3] = 0.f;
+        upper3x3.r[1].m128_f32[3] = 0.f;
+        upper3x3.r[2].m128_f32[3] = 0.f;
+        upper3x3.r[3].m128_f32[0] = 0.f;
+        upper3x3.r[3].m128_f32[1] = 0.f;
+        upper3x3.r[3].m128_f32[2] = 0.f;
+        upper3x3.r[3].m128_f32[3] = 1.f;
+        XMVECTOR det;
+        current->objectToWorldNormal = XMMatrixTranspose(XMMatrixInverse(&det, upper3x3));
         current++; //Go to the next instance's address
     }
     m_instancePropertiesBuffer->Unmap(0, nullptr);

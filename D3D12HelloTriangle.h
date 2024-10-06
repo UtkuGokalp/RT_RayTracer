@@ -174,6 +174,8 @@ private:
 	struct InstanceProperties
 	{
 		XMMATRIX objectToWorld;
+		//#DXR Extra - Simple Lighting
+		XMMATRIX objectToWorldNormal;
 	};
 
 	ComPtr<ID3D12Resource> m_instancePropertiesBuffer;
@@ -191,7 +193,7 @@ private:
 	/// Creates a vertex buffer for the plane.
 	/// </summary>
 	void CreatePlaneVB();
-
+	
 	// #DXR Extra: Per-Instance Data
 	ComPtr<ID3D12Resource>m_globalConstantBuffer;
 	void CreateGlobalConstantBuffer();
