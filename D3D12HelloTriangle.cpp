@@ -268,28 +268,26 @@ void D3D12HelloTriangle::LoadAssets()
     // Create the vertex buffer.
     {
         // Define the geometry for a triangle.
-        Vertex triangleVertices[] =
-        {
-            {{std::sqrtf(8.f / 9.f), 0.f, -1.f / 3.f}, {1.f, 0.f, 0.f, 1.f}},
-            {{-std::sqrtf(2.f / 9.f), std::sqrtf(2.f / 3.f), -1.f / 3.f}, {0.f, 1.f, 0.f, 1.f}},
-            {{-std::sqrtf(2.f / 9.f), -std::sqrtf(2.f / 3.f), -1.f / 3.f}, {0.f, 0.f, 1.f, 1.f}},
-            {{0.f, 0.f, 1.f}, {1, 0, 1, 1}}
-        };
+        std::vector<Vertex> vertices;
+        std::vector<UINT> indices;
 
-
-        OBJFileManager ofm = OBJFileManager();
-        std::vector<objl::Vertex> vertices;
-        std::vector<UINT> indicessss;
-        Vertex verts[] = { { {}, {} } };
-        ofm.LoadObjFile("C:\\Users\\utkug\\Desktop\\OBJ-Loader-master\\examples\\1 - LoadAndPrint\\box_stack.obj", vertices, indicessss);
-        for (objl::Vertex& vertex : vertices)
         {
-            XMFLOAT3 pos = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
-            XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-            verts[0] = { pos, color };
+            OBJFileManager ofm = OBJFileManager();
+            std::vector<objl::Vertex> modelFileVertices;
+
+            std::string path = "C:\\Users\\utkug\\Desktop\\OBJ-Loader-master\\examples\\1 - LoadAndPrint\\box_stack.obj";
+            ofm.LoadObjFile(path, modelFileVertices, indices);
+
+            //Convert from objl::Vertex to Vertex struct to complete the load.
+            for (auto& vertex : modelFileVertices)
+            {
+                XMFLOAT3 pos = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+                XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+                vertices.push_back({ pos, color });
+            }
         }
 
-        const UINT vertexBufferSize = sizeof(triangleVertices);
+        const UINT vertexBufferSize = vertices.size() * sizeof(Vertex);
 
         // Note: using upload heaps to transfer static data like vert buffers is not 
         // recommended. Every time the GPU needs it, the upload heap will be marshalled 
@@ -307,7 +305,7 @@ void D3D12HelloTriangle::LoadAssets()
         UINT8* pVertexDataBegin;
         CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
         ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-        memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
+        memcpy(pVertexDataBegin, vertices.data(), vertexBufferSize);
         m_vertexBuffer->Unmap(0, nullptr);
 
         // Initialize the vertex buffer view.
@@ -318,7 +316,7 @@ void D3D12HelloTriangle::LoadAssets()
         CreateMengerSpongeVB();
 
         //Initialize indices for tetrahedron.
-        std::vector<UINT> indices = { 0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2 };
+        //std::vector<UINT> indices = { 0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2 };
         const UINT indexBufferSizeInBytes = (UINT)indices.size() * sizeof(UINT);
 
         CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
