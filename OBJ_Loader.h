@@ -136,16 +136,9 @@ namespace objl
 	struct Mesh
 	{
 		// Default Constructor
-		Mesh()
-		{
-
-		}
+		Mesh();
 		// Variable Set Constructor
-		Mesh(std::vector<Vertex>& _Vertices, std::vector<unsigned int>& _Indices)
-		{
-			Vertices = _Vertices;
-			Indices = _Indices;
-		}
+		Mesh(std::vector<Vertex>& _Vertices, std::vector<unsigned int>& _Indices);
 		// Mesh Name
 		std::string MeshName;
 		// Vertex List
