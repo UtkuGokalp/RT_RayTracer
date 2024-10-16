@@ -90,3 +90,16 @@ Vector3 Vector3::operator/(const float& other) const
     return Vector3(this->X / other, this->Y / other, this->Z / other);
 }
 //----------------------------------------------------------
+
+
+//----------------------------------------------------------
+//Material implementations
+Material::Material()
+{
+    name;
+    Ns = 0.0f;
+    Ni = 0.0f;
+    d = 0.0f;
+    illum = 0;
+}
+//----------------------------------------------------------
