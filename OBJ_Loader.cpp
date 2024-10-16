@@ -122,6 +122,39 @@ Mesh::Mesh(std::vector<Vertex>& _Vertices, std::vector<unsigned int>& _Indices)
 
 
 //----------------------------------------------------------
-//
+//math namespace implementations
+// Vector3 Cross Product
+Vector3 CrossV3(const Vector3 a, const Vector3 b)
+{
+    return Vector3(a.Y * b.Z - a.Z * b.Y,
+        a.Z * b.X - a.X * b.Z,
+        a.X * b.Y - a.Y * b.X);
+}
 
+// Vector3 Magnitude Calculation
+float MagnitudeV3(const Vector3 in)
+{
+    return (sqrtf(powf(in.X, 2) + powf(in.Y, 2) + powf(in.Z, 2)));
+}
+
+// Vector3 DotProduct
+float DotV3(const Vector3 a, const Vector3 b)
+{
+    return (a.X * b.X) + (a.Y * b.Y) + (a.Z * b.Z);
+}
+
+// Angle between 2 Vector3 Objects
+float AngleBetweenV3(const Vector3 a, const Vector3 b)
+{
+    float angle = math::DotV3(a, b);
+    angle /= (math::MagnitudeV3(a) * math::MagnitudeV3(b));
+    return angle = acosf(angle);
+}
+
+// Projection Calculation of a onto b
+Vector3 ProjV3(const Vector3 a, const Vector3 b)
+{
+    Vector3 bn = b / math::MagnitudeV3(b);
+    return bn * math::DotV3(a, bn);
+}
 //----------------------------------------------------------
