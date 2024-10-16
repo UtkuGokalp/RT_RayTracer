@@ -359,4 +359,7 @@
   <ItemGroup>
     <Text Include="glm\CMakeLists.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="box_stack.obj" />
+  </ItemGroup>
 </Project>

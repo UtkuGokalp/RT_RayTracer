@@ -462,6 +462,11 @@
   <ItemGroup>
     <Text Include="glm\CMakeLists.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="box_stack.obj">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </Object>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
