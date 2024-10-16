@@ -362,3 +362,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /imgui.ini
+
+#Don't ignore the test model because it's path is hardcoded.
+!test_model.obj
