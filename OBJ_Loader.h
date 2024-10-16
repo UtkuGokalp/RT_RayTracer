@@ -32,42 +32,19 @@ namespace objl
 	struct Vector2
 	{
 		// Default Constructor
-		Vector2()
-		{
-			X = 0.0f;
-			Y = 0.0f;
-		}
+		Vector2();
 		// Variable Set Constructor
-		Vector2(float X_, float Y_)
-		{
-			X = X_;
-			Y = Y_;
-		}
+		Vector2(float X_, float Y_);
 		// Bool Equals Operator Overload
-		bool operator==(const Vector2& other) const
-		{
-			return (this->X == other.X && this->Y == other.Y);
-		}
+		bool operator==(const Vector2& other) const;
 		// Bool Not Equals Operator Overload
-		bool operator!=(const Vector2& other) const
-		{
-			return !(this->X == other.X && this->Y == other.Y);
-		}
+		bool operator!=(const Vector2& other) const;
 		// Addition Operator Overload
-		Vector2 operator+(const Vector2& right) const
-		{
-			return Vector2(this->X + right.X, this->Y + right.Y);
-		}
+		Vector2 operator+(const Vector2& right) const;
 		// Subtraction Operator Overload
-		Vector2 operator-(const Vector2& right) const
-		{
-			return Vector2(this->X - right.X, this->Y - right.Y);
-		}
+		Vector2 operator-(const Vector2& right) const;
 		// Float Multiplication Operator Overload
-		Vector2 operator*(const float& other) const
-		{
-			return Vector2(this->X * other, this->Y * other);
-		}
+		Vector2 operator*(const float& other) const;
 
 		// Positional Variables
 		float X;
