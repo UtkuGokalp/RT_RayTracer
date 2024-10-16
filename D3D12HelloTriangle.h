@@ -21,6 +21,7 @@
 #include "nv_helpers_dx12/TopLevelASGenerator.h"
 #include "nv_helpers_dx12/ShaderBindingTableGenerator.h"
 #include "UIConstructor.h"
+#include "OBJ_FileManager.h"
 
 using namespace DirectX;
 

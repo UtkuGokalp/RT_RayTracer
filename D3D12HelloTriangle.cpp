@@ -276,6 +276,19 @@ void D3D12HelloTriangle::LoadAssets()
             {{0.f, 0.f, 1.f}, {1, 0, 1, 1}}
         };
 
+
+        OBJFileManager ofm = OBJFileManager();
+        std::vector<objl::Vertex> vertices;
+        std::vector<UINT> indicessss;
+        Vertex verts[] = { { {}, {} } };
+        ofm.LoadObjFile("C:\\Users\\utkug\\Desktop\\OBJ-Loader-master\\examples\\1 - LoadAndPrint\\box_stack.obj", vertices, indicessss);
+        for (objl::Vertex& vertex : vertices)
+        {
+            XMFLOAT3 pos = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+            XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+            verts[0] = { pos, color };
+        }
+
         const UINT vertexBufferSize = sizeof(triangleVertices);
 
         // Note: using upload heaps to transfer static data like vert buffers is not 
@@ -701,7 +714,7 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     // #DXR Extra: Indexed Geometry
     // Build the bottom AS from the Menger Sponge vertex buffer
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
-                                                                                { { m_mengerIB.Get(), m_mengerIndexCount  } });
+        { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
     m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) } };
@@ -948,7 +961,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
                                            (void*)(heapPointer),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
                                            (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
-                                         });
+        });
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 

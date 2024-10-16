@@ -66,7 +66,7 @@ namespace objl
 		// Float Multiplication Operator Overload
 		Vector2 operator*(const float& other) const
 		{
-			return Vector2(this->X *other, this->Y * other);
+			return Vector2(this->X * other, this->Y * other);
 		}
 
 		// Positional Variables

@@ -194,6 +194,7 @@
     <ClInclude Include="ImGui\imgui_impl_win32.h" />
     <ClInclude Include="UIConstructor.h" />
     <ClInclude Include="OBJ_Loader.h" />
+    <ClInclude Include="OBJ_FileManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -227,6 +228,8 @@
     <ClCompile Include="ImGui\imgui_impl_dx12.cpp" />
     <ClCompile Include="ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="UIConstructor.cpp" />
+    <ClCompile Include="OBJ_FileManager.cpp" />
+    <ClCompile Include="OBJ_Loader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shaders.hlsl">
