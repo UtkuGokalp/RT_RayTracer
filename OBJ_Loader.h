@@ -57,49 +57,21 @@ namespace objl
 	struct Vector3
 	{
 		// Default Constructor
-		Vector3()
-		{
-			X = 0.0f;
-			Y = 0.0f;
-			Z = 0.0f;
-		}
+		Vector3();
 		// Variable Set Constructor
-		Vector3(float X_, float Y_, float Z_)
-		{
-			X = X_;
-			Y = Y_;
-			Z = Z_;
-		}
+		Vector3(float X_, float Y_, float Z_);
 		// Bool Equals Operator Overload
-		bool operator==(const Vector3& other) const
-		{
-			return (this->X == other.X && this->Y == other.Y && this->Z == other.Z);
-		}
+		bool operator==(const Vector3& other) const;
 		// Bool Not Equals Operator Overload
-		bool operator!=(const Vector3& other) const
-		{
-			return !(this->X == other.X && this->Y == other.Y && this->Z == other.Z);
-		}
+		bool operator!=(const Vector3& other) const;
 		// Addition Operator Overload
-		Vector3 operator+(const Vector3& right) const
-		{
-			return Vector3(this->X + right.X, this->Y + right.Y, this->Z + right.Z);
-		}
+		Vector3 operator+(const Vector3& right) const;
 		// Subtraction Operator Overload
-		Vector3 operator-(const Vector3& right) const
-		{
-			return Vector3(this->X - right.X, this->Y - right.Y, this->Z - right.Z);
-		}
+		Vector3 operator-(const Vector3& right) const;
 		// Float Multiplication Operator Overload
-		Vector3 operator*(const float& other) const
-		{
-			return Vector3(this->X * other, this->Y * other, this->Z * other);
-		}
+		Vector3 operator*(const float& other) const;
 		// Float Division Operator Overload
-		Vector3 operator/(const float& other) const
-		{
-			return Vector3(this->X / other, this->Y / other, this->Z / other);
-		}
+		Vector3 operator/(const float& other) const;
 
 		// Positional Variables
 		float X;
