@@ -360,6 +360,6 @@
     <Text Include="glm\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Object Include="test_model.obj" />
+    <Object Include="teapot.obj" />
   </ItemGroup>
 </Project>

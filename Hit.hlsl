@@ -38,9 +38,7 @@ cbuffer Colors : register(b0)
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
-    float3 barycentrics = float3(1.0f - attrib.bary.x - attrib.bary.y,
-                                 attrib.bary.x,
-                                 attrib.bary.y);
+    //float3 barycentrics = float3(1.0f - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
     
     uint vertId = 3 * PrimitiveIndex();
     
@@ -62,14 +60,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 lightPos = float3(2, 2, -2);
     float3 centerLightDir = normalize(lightPos - worldOrigin);
-    
     float factor = dot(normal, centerLightDir);
-    
-    //lightPos = float3(-2, -2, 2);
-    //centerLightDir = normalize(lightPos - worldOrigin);
-    
-    //factor += abs(dot(normal, centerLightDir));
-    
     float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
