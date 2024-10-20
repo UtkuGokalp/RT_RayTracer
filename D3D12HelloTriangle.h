@@ -75,8 +75,9 @@ private:
 	UINT m_rtvDescriptorSize;
 
 	// App resources.
-	ComPtr<ID3D12Resource> m_vertexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+	ComPtr<ID3D12Resource> m_modelVertexBuffer;
+	D3D12_VERTEX_BUFFER_VIEW m_modelVertexBufferView;
+	UINT m_modelVertexCount;
 
 	// Synchronization objects.
 	UINT m_frameIndex;
@@ -211,8 +212,9 @@ private:
 	void CreatePerInstanceConstantBuffers();
 	std::vector<ComPtr<ID3D12Resource>> m_perInstanceConstantBuffers;
 
-	ComPtr<ID3D12Resource> m_indexBuffer;
-	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+	ComPtr<ID3D12Resource> m_modelIndexBuffer;
+	D3D12_INDEX_BUFFER_VIEW m_modelIndexBufferView;
+	UINT m_modelIndexCount;
 
 	void CreateMengerSpongeVB();
 	ComPtr<ID3D12Resource> m_mengerVB;

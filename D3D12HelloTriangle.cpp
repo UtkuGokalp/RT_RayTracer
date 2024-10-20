@@ -287,6 +287,9 @@ void D3D12HelloTriangle::LoadAssets()
             }
         }
 
+        m_modelVertexCount = vertices.size();
+        m_modelIndexCount = indices.size();
+
         const UINT vertexBufferSize = vertices.size() * sizeof(Vertex);
 
         // Note: using upload heaps to transfer static data like vert buffers is not 
@@ -299,19 +302,19 @@ void D3D12HelloTriangle::LoadAssets()
             &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS(&m_vertexBuffer)));
+            IID_PPV_ARGS(&m_modelVertexBuffer)));
 
         // Copy the triangle data to the vertex buffer.
         UINT8* pVertexDataBegin;
         CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
-        ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+        ThrowIfFailed(m_modelVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
         memcpy(pVertexDataBegin, vertices.data(), vertexBufferSize);
-        m_vertexBuffer->Unmap(0, nullptr);
+        m_modelVertexBuffer->Unmap(0, nullptr);
 
         // Initialize the vertex buffer view.
-        m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-        m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-        m_vertexBufferView.SizeInBytes = vertexBufferSize;
+        m_modelVertexBufferView.BufferLocation = m_modelVertexBuffer->GetGPUVirtualAddress();
+        m_modelVertexBufferView.StrideInBytes = sizeof(Vertex);
+        m_modelVertexBufferView.SizeInBytes = vertexBufferSize;
 
         CreateMengerSpongeVB();
 
@@ -321,18 +324,18 @@ void D3D12HelloTriangle::LoadAssets()
 
         CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
         CD3DX12_RESOURCE_DESC bufferResource = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSizeInBytes);
-        ThrowIfFailed(m_device->CreateCommittedResource(&heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_indexBuffer)));
+        ThrowIfFailed(m_device->CreateCommittedResource(&heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_modelIndexBuffer)));
 
         // Copy the triangle data to the index buffer.
         UINT8* pIndexDataBegin;
-        ThrowIfFailed(m_indexBuffer->Map(0, &readRange, (void**)&pIndexDataBegin));
+        ThrowIfFailed(m_modelIndexBuffer->Map(0, &readRange, (void**)&pIndexDataBegin));
         memcpy(pIndexDataBegin, indices.data(), indexBufferSizeInBytes);
-        m_indexBuffer->Unmap(0, nullptr);
+        m_modelIndexBuffer->Unmap(0, nullptr);
 
         // Initialize the index buffer view.
-        m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-        m_indexBufferView.SizeInBytes = indexBufferSizeInBytes;
+        m_modelIndexBufferView.BufferLocation = m_modelIndexBuffer->GetGPUVirtualAddress();
+        m_modelIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+        m_modelIndexBufferView.SizeInBytes = indexBufferSizeInBytes;
 
         // #DXR - Per Instance
         // Create a vertex buffer for a ground plane, similarly to the triangle definition above
@@ -457,8 +460,8 @@ void D3D12HelloTriangle::PopulateCommandList()
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         //Render tetrahedron
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-        m_commandList->IASetIndexBuffer(&m_indexBufferView);
+        m_commandList->IASetVertexBuffers(0, 1, &m_modelVertexBufferView);
+        m_commandList->IASetIndexBuffer(&m_modelIndexBufferView);
         //Render plane
         m_commandList->DrawIndexedInstanced(12, 1, 0, 0, 0);
         m_commandList->IASetVertexBuffers(0, 1, &m_planeBufferView);
@@ -706,15 +709,17 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
 
 void D3D12HelloTriangle::CreateAccelerationStructures()
 {
+    //3644
+    //18960
     // Build the BLAS from triangle vertex buffer
-    AccelerationStructureBuffers bottomLevelBuffers = CreateBottomLevelAS({ { m_vertexBuffer.Get(), 4 } }, { { m_indexBuffer.Get(), 12 } });
+    AccelerationStructureBuffers modelBottomLevelBuffers = CreateBottomLevelAS({ { m_modelVertexBuffer.Get(), m_modelVertexCount } }, { { m_modelIndexBuffer.Get(), m_modelIndexCount } });
     AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
     // #DXR Extra: Indexed Geometry
     // Build the bottom AS from the Menger Sponge vertex buffer
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
-    m_instances = { { bottomLevelBuffers.pResult, XMMatrixIdentity() },
+    m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixIdentity() },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) } };
     CreateTopLevelAS(m_instances);
 
@@ -732,7 +737,7 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
 
     // Store the AS buffers. The rest of the buffers will be released once we exit the function
-    m_bottomLevelAS = bottomLevelBuffers.pResult;
+    m_bottomLevelAS = modelBottomLevelBuffers.pResult;
 }
 
 ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
