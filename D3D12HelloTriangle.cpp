@@ -275,7 +275,7 @@ void D3D12HelloTriangle::LoadAssets()
             OBJFileManager ofm = OBJFileManager();
             std::vector<objl::Vertex> modelFileVertices;
 
-            std::string path = "teapot.obj";
+            std::string path = "rabbit.obj";
             ofm.LoadObjFile(path, modelFileVertices, indices);
 
             //Convert from objl::Vertex to Vertex struct to complete the load.
@@ -462,8 +462,8 @@ void D3D12HelloTriangle::PopulateCommandList()
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_commandList->IASetVertexBuffers(0, 1, &m_modelVertexBufferView);
         m_commandList->IASetIndexBuffer(&m_modelIndexBufferView);
+        m_commandList->DrawIndexedInstanced(m_modelIndexCount, 1, 0, 0, 0);
         //Render plane
-        m_commandList->DrawIndexedInstanced(12, 1, 0, 0, 0);
         m_commandList->IASetVertexBuffers(0, 1, &m_planeBufferView);
         m_commandList->DrawInstanced(6, 1, 0, 0);
         // #DXR Extra: Indexed Geometry
