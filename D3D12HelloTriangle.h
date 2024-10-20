@@ -21,6 +21,7 @@
 #include "nv_helpers_dx12/TopLevelASGenerator.h"
 #include "nv_helpers_dx12/ShaderBindingTableGenerator.h"
 #include "UIConstructor.h"
+#include "OBJ_FileManager.h"
 
 using namespace DirectX;
 
@@ -46,6 +47,11 @@ private:
 
 	struct Vertex
 	{
+		Vertex()
+		{
+			position = XMFLOAT3(0.0f, 0.0f, 0.0f);
+			color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		}
 		XMFLOAT3 position;
 		XMFLOAT4 color;
 		//The constructors below are unused. They are only for providing compatibility
@@ -69,8 +75,9 @@ private:
 	UINT m_rtvDescriptorSize;
 
 	// App resources.
-	ComPtr<ID3D12Resource> m_vertexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+	ComPtr<ID3D12Resource> m_modelVertexBuffer;
+	D3D12_VERTEX_BUFFER_VIEW m_modelVertexBufferView;
+	UINT m_modelVertexCount;
 
 	// Synchronization objects.
 	UINT m_frameIndex;
@@ -205,8 +212,9 @@ private:
 	void CreatePerInstanceConstantBuffers();
 	std::vector<ComPtr<ID3D12Resource>> m_perInstanceConstantBuffers;
 
-	ComPtr<ID3D12Resource> m_indexBuffer;
-	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+	ComPtr<ID3D12Resource> m_modelIndexBuffer;
+	D3D12_INDEX_BUFFER_VIEW m_modelIndexBufferView;
+	UINT m_modelIndexCount;
 
 	void CreateMengerSpongeVB();
 	ComPtr<ID3D12Resource> m_mengerVB;

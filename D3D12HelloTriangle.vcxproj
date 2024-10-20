@@ -284,6 +284,8 @@
     <ClInclude Include="nv_helpers_dx12\RootSignatureGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\ShaderBindingTableGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\TopLevelASGenerator.h" />
+    <ClInclude Include="OBJ_FileManager.h" />
+    <ClInclude Include="OBJ_Loader.h" />
     <ClInclude Include="UIConstructor.h" />
     <ClInclude Include="Win32Application.h" />
     <ClInclude Include="D3D12HelloTriangle.h" />
@@ -308,6 +310,8 @@
     <ClCompile Include="nv_helpers_dx12\RootSignatureGenerator.cpp" />
     <ClCompile Include="nv_helpers_dx12\ShaderBindingTableGenerator.cpp" />
     <ClCompile Include="nv_helpers_dx12\TopLevelASGenerator.cpp" />
+    <ClCompile Include="OBJ_FileManager.cpp" />
+    <ClCompile Include="OBJ_Loader.cpp" />
     <ClCompile Include="UIConstructor.cpp" />
     <ClCompile Include="Win32Application.cpp" />
     <ClCompile Include="D3D12HelloTriangle.cpp" />
@@ -457,6 +461,11 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="glm\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="teapot.obj">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </Object>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
