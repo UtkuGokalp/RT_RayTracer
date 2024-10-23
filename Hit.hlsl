@@ -43,7 +43,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     uint vertId = 3 * PrimitiveIndex();
     
     // #DXR Extra: Per-Instance Data
-    float3 hitColor = float3(0.6f, 0.7f, 0.6f);
+    float3 hitColor = float3(1.0f, 1.0f, 1.0f);
     
     //hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
     //           BTriVertex[indices[vertId + 1]].color * barycentrics.y +
