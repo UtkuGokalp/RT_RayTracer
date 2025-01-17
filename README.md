@@ -9,4 +9,5 @@ In order for this project to work, you need DirectX12 and Windows SDK 10.0.18362
     <li>NVIDIA GeForce 20 Series</li>
     <li>NVIDIA GeForce 30 Series</li>
     <li>NVIDIA GeForce 40 Series</li>
+    <li>Any Intel Arc GPU</li>
 </ul>
