@@ -232,8 +232,10 @@ private:
 	ComPtr<IDxcBlob> m_shadowLibrary;
 	ComPtr<ID3D12RootSignature> m_shadowSignature;
 
+	//UI
 	void InitializeImGuiContext(bool darkTheme = true);
 	void CreateImGuiFontDescriptorHeap();
 	ComPtr<ID3D12DescriptorHeap> m_imguiFontDescriptorHeap;
 	UIConstructor uiConstructor;
+	bool renderUI;
 };
