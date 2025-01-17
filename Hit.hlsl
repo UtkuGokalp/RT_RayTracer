@@ -62,7 +62,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 centerLightDir = normalize(lightPos - worldOrigin);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
-    //hitColor *= lightIntensity;
+    hitColor *= lightIntensity;
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
 
