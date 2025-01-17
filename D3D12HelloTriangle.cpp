@@ -275,7 +275,7 @@ void D3D12HelloTriangle::LoadAssets()
             OBJFileManager ofm = OBJFileManager();
             std::vector<objl::Vertex> modelFileVertices;
 
-            std::string path = "teapot.obj";
+            std::string path = "rabbit.obj";
             ofm.LoadObjFile(path, modelFileVertices, indices);
 
             //Convert from objl::Vertex to Vertex struct to complete the load.
