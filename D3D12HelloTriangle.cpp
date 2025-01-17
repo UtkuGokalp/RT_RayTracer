@@ -275,7 +275,7 @@ void D3D12HelloTriangle::LoadAssets()
             OBJFileManager ofm = OBJFileManager();
             std::vector<objl::Vertex> modelFileVertices;
 
-            std::string path = "rabbit.obj";
+            std::string path = "teapot.obj";
             ofm.LoadObjFile(path, modelFileVertices, indices);
 
             //Convert from objl::Vertex to Vertex struct to complete the load.
@@ -720,7 +720,7 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
     m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixIdentity() },
-                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) } };
+                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f) }};
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
