@@ -25,7 +25,8 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
     m_viewport(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)),
     m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
     m_rtvDescriptorSize(0),
-    uiConstructor(UIConstructor())
+    uiConstructor(UIConstructor()),
+    renderUI(false)
 {
 }
 
@@ -548,14 +549,17 @@ void D3D12HelloTriangle::PopulateCommandList()
     }
 
     //ImGui rendering code
-    ImGui_ImplWin32_NewFrame();
-    ImGui_ImplDX12_NewFrame();
-    ImGui::NewFrame();
-    uiConstructor.Construct();
-    ImGui::Render();
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.Get());
-    ImGui::UpdatePlatformWindows();
-    ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_commandList.Get());
+    if (renderUI)
+    {
+        ImGui_ImplWin32_NewFrame();
+        ImGui_ImplDX12_NewFrame();
+        ImGui::NewFrame();
+        uiConstructor.Construct();
+        ImGui::Render();
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.Get());
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_commandList.Get());
+    }
 
     // Indicate that the back buffer will now be used to present.
     m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
@@ -605,6 +609,10 @@ void D3D12HelloTriangle::OnKeyUp(UINT8 key)
     if (key == VK_ADD)
     {
         uiConstructor.SetDemoUIEnable(!uiConstructor.IsDemoUIShown());
+    }
+    if (key == VK_SUBTRACT)
+    {
+        renderUI = !renderUI;
     }
 }
 
