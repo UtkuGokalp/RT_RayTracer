@@ -56,7 +56,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 normal = normalize(cross(e2, e1));
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
     
-    //Check whether the worldOrigin and lightDirection calculations are correct or not
+    
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 lightPos = float3(2, 2, -2);
     float3 centerLightDir = normalize(lightPos - hitWorldPosition);
@@ -73,7 +73,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // #DXR Extra - Another ray type
     float3 lightPos = float3(2, 2, -2);
     //Find the hit position in world space
-    float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     //Calculate the direction towards the light from the position of the ray that hit the plane
     float3 lightDir = normalize(lightPos - worldOrigin);
     // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
