@@ -91,12 +91,12 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
         normal = -normal;
     }
     
-    float3 centerLightDir = normalize(lightPos - worldOrigin);
+    float3 centerLightDir = normalize(lightPos - hitWorldPosition);
     bool isShadowed = dot(normal, centerLightDir) < 0.f;
     
     
     RayDesc ray;
-    ray.Origin = worldOrigin;
+    ray.Origin = hitWorldPosition;
     ray.Direction = lightDir;
     ray.TMin = 0.01;
     ray.TMax = 100000;
