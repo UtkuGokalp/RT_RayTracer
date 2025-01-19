@@ -871,7 +871,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point).
     // Note that this recursion depth should be kept to a minimum for best performance.
     // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(2);
+    pipeline.SetMaxRecursionDepth(4);
 
     //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
     //so that later we can access the shader pointers by name.
