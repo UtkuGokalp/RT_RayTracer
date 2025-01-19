@@ -58,12 +58,11 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-    /*float3 lightPos = float3(2, 2, -2);
+    float3 lightPos = float3(0, 6, 0);
     float3 centerLightDir = normalize(lightPos - hitWorldPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
-    hitColor *= lightIntensity;*/
-    
+    hitColor *= lightIntensity;
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
 
@@ -72,7 +71,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
 {
     // #DXR Extra - Another ray type
-    float3 lightPos = float3(2, 2, -2);
+    float3 lightPos = float3(0, 6, 0);
     //Find the hit position in world space
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     //Calculate the direction towards the light from the position of the ray that hit the plane
@@ -150,7 +149,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
     //TODO: Uncomment the lightIntensity * shadowFactor multiplication for shadows
-    float3 hitColor = float3(0.7, 0.7, 0.7);// * lightIntensity * shadowFactor;
+    float3 hitColor = float3(0.7, 0.7, 0.7);// * lightIntensity;// * shadowFactor;
 
     //Ray for reflection
     ray.Origin = hitWorldPosition;
@@ -162,7 +161,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
         SceneBVH, //Acceleration structure containing the scene
         RAY_FLAG_CULL_BACK_FACING_TRIANGLES, //Flag to cull backfacing triangles (this can also be used as a debug because currently there are some weird problems with normals)
         0xFF, //Don't mask any geometry
-        1, //No specific offset for radiance rays, just use the second shader in the SBT for now
+        0, //No specific offset for radiance rays, just use the first shader in the SBT for now
         0, //No stride in the SBT
         0, //Use the first miss shader in the SBT
         ray, //Which ray to trace
@@ -170,6 +169,8 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     );
     hitColor *= reflectancePayload.colorAndDistance.xyz;
 /*
+    //This is a TraceRay() call from the benchmark project. It is left here as a documentation because it provides some insight
+    //to how the parameters need to be used.
     TraceRay(
         g_scene,
         RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
