@@ -57,9 +57,9 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
     
     //Check whether the worldOrigin and lightDirection calculations are correct or not
-    float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 lightPos = float3(2, 2, -2);
-    float3 centerLightDir = normalize(lightPos - worldOrigin);
+    float3 centerLightDir = normalize(lightPos - hitWorldPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
