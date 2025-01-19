@@ -58,11 +58,12 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-    float3 lightPos = float3(2, 2, -2);
+    /*float3 lightPos = float3(2, 2, -2);
     float3 centerLightDir = normalize(lightPos - hitWorldPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
-    hitColor *= lightIntensity;
+    hitColor *= lightIntensity;*/
+    
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
 
@@ -94,7 +95,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float3 centerLightDir = normalize(lightPos - hitWorldPosition);
     bool isShadowed = dot(normal, centerLightDir) < 0.f;
     
-    
+    //Ray for shadows
     RayDesc ray;
     ray.Origin = hitWorldPosition;
     ray.Direction = lightDir;
@@ -104,7 +105,6 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // Initialize the ray payload
     ShadowHitInfo shadowPayload;
     shadowPayload.isHit = false;
-    
     TraceRay(
     // Acceleration structure
     SceneBVH,
@@ -133,7 +133,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // the program when no geometry have been hit, for example one to return a
     // sky color for regular rendering, and another returning a full
     // visibility value for shadow rays. Shadow miss program is the 2nd miss program,
-    //so an index of 1.
+    // so an index of 1.
     1,
     // Ray information to trace
     ray,
@@ -149,6 +149,37 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float shadowFactor = isShadowed ? 0.3f : 1.0f;
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
-    float3 hitColor = float3(0.7, 0.7, 0.7) * lightIntensity * shadowFactor;
+    //TODO: Uncomment the lightIntensity * shadowFactor multiplication for shadows
+    float3 hitColor = float3(0.7, 0.7, 0.7);// * lightIntensity * shadowFactor;
+
+    //Ray for reflection
+    ray.Origin = hitWorldPosition;
+    ray.Direction = reflect(WorldRayDirection(), normal);
+    ray.TMin = 0.01;
+    ray.TMax = 100000;
+    HitInfo reflectancePayload = { float4(0, 0, 0, 0) };
+    TraceRay(
+        SceneBVH, //Acceleration structure containing the scene
+        RAY_FLAG_CULL_BACK_FACING_TRIANGLES, //Flag to cull backfacing triangles (this can also be used as a debug because currently there are some weird problems with normals)
+        0xFF, //Don't mask any geometry
+        1, //No specific offset for radiance rays, just use the second shader in the SBT for now
+        0, //No stride in the SBT
+        0, //Use the first miss shader in the SBT
+        ray, //Which ray to trace
+        reflectancePayload //Payload
+    );
+    hitColor *= reflectancePayload.colorAndDistance.xyz;
+/*
+    TraceRay(
+        g_scene,
+        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+        TraceRayParameters::InstanceMask,
+        TraceRayParameters::HitGroup::Offset[RayType::Radiance],
+        TraceRayParameters::HitGroup::GeometryStride,
+        TraceRayParameters::MissShader::Offset[RayType::Radiance],
+        rayDesc,
+        rayPayload
+    );
+*/
     payload.colorAndDistance = float4(hitColor, 1);
 }
