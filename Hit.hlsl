@@ -75,7 +75,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     //Find the hit position in world space
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     //Calculate the direction towards the light from the position of the ray that hit the plane
-    float3 lightDir = normalize(lightPos - worldOrigin);
+    float3 lightDir = normalize(lightPos - hitWorldPosition);
     // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
     
     // #DXR Extra - Simple Lighting
