@@ -1,4 +1,5 @@
 #include "Common.hlsl"
+#include "CheckersPattern.hlsli"
 
 // #DXR Extra - Another ray type
 struct ShadowHitInfo
@@ -146,7 +147,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
     //TODO: Uncomment the lightIntensity * shadowFactor multiplication for shadows
-    float3 hitColor = float3(0.7, 0.7, 0.7);// * lightIntensity * shadowFactor;
+    float3 platformColor = float3(1.0f, 1.0f, 1.0f);// * lightIntensity * shadowFactor;
 
     //Ray for reflection
     ray.Origin = hitWorldPosition;
@@ -164,7 +165,16 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
         ray, //Which ray to trace
         reflectancePayload //Payload
     );
-    hitColor *= reflectancePayload.colorAndDistance.xyz;
+
+    float3 hitColor = platformColor * reflectancePayload.colorAndDistance.xyz;
+    float3 cameraPosition = float3(0, 0, 0);
+    float checkersPattern = AnalyticalCheckersTexture(hitWorldPosition, normal, cameraPosition, instanceProperties[InstanceID()].objectToWorldNormal);
+    hitColor *= checkersPattern;
+
+    // Apply visibility falloff.
+    //float t = RayTCurrent();
+    //color = lerp(color, BackgroundColor, 1.0 - exp(-0.000002*t*t*t));
+
 /*
     //This is a TraceRay() call from the benchmark project. It is left here as a documentation because it provides some insight
     //to how the parameters need to be used.
