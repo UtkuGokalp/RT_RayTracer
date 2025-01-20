@@ -717,8 +717,6 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::tuple<ComPtr<ID
 
 void D3D12HelloTriangle::CreateAccelerationStructures()
 {
-    //3644
-    //18960
     // Build the BLAS from triangle vertex buffer
     AccelerationStructureBuffers modelBottomLevelBuffers = CreateBottomLevelAS({ { m_modelVertexBuffer.Get(), m_modelVertexCount } }, { { m_modelIndexBuffer.Get(), m_modelIndexCount } });
     AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });

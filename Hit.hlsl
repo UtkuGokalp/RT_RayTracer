@@ -25,8 +25,6 @@ StructuredBuffer<int> indices : register(t1);
 // #DXR Extra - Another ray type
 // Raytracing TLAS, accessed as a SRV
 RaytracingAccelerationStructure SceneBVH : register(t2);
-// #DXR Extra - Simple Lighting
-StructuredBuffer<InstanceProperties> instanceProperties : register(t3);
 
 cbuffer Colors : register(b0)
 {
@@ -34,6 +32,9 @@ cbuffer Colors : register(b0)
     float3 B;
     float3 C;
 }
+
+// #DXR Extra - Simple Lighting
+StructuredBuffer<InstanceProperties> instanceProperties : register(t3);
 
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
