@@ -166,8 +166,9 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
         reflectancePayload //Payload
     );
 
+    //Make the surface have a checker pattern.
     float3 hitColor = platformColor * reflectancePayload.colorAndDistance.xyz;
-    float3 cameraPosition = float3(0, 0, 0);
+    float3 cameraPosition = float3(0, 0, 0); //Doesn't seem to have any effect and I don't want to mess with the memory management right now. It can be implemented later on.
     float checkersPattern = AnalyticalCheckersTexture(hitWorldPosition, normal, cameraPosition, instanceProperties[InstanceID()].objectToWorldNormal);
     hitColor *= checkersPattern;
 
