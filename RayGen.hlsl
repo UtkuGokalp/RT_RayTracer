@@ -14,7 +14,7 @@ RWTexture2D<float4> gOutput : register(u0);
 // t in t0 declares an SRV
 RaytracingAccelerationStructure SceneBVH : register(t0);
 
-// In order to declare a constant buffer (CBV), the letter c is used
+// In order to declare a constant buffer (CBV), the letter b is used
 
 // #DXR Extra: Perspective Camera
 cbuffer CameraParams : register(b0)
