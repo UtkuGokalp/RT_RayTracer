@@ -44,11 +44,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     // #DXR Extra: Per-Instance Data
     float3 hitColor = float3(1.0f, 1.0f, 1.0f);
-    
-    //hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
-    //           BTriVertex[indices[vertId + 1]].color * barycentrics.y +
-    //           BTriVertex[indices[vertId + 2]].color * barycentrics.z;
-    
+
     // #DXR Extra - Simple Lighting
     //Calculate normals based on the vertices
     float3 e1 = BTriVertex[indices[vertId + 1]].vertex - BTriVertex[indices[vertId + 0]].vertex;
@@ -58,7 +54,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-    float3 lightPos = float3(0, 6, 0);
+    float3 lightPos = float3(2, 2, -2);
     float3 centerLightDir = normalize(lightPos - hitWorldPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
@@ -71,7 +67,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
 {
     // #DXR Extra - Another ray type
-    float3 lightPos = float3(0, 6, 0);
+    float3 lightPos = float3(2, 2, -2);
     //Find the hit position in world space
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     //Calculate the direction towards the light from the position of the ray that hit the plane
@@ -149,7 +145,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
     //TODO: Uncomment the lightIntensity * shadowFactor multiplication for shadows
-    float3 hitColor = float3(0.7, 0.7, 0.7);// * lightIntensity;// * shadowFactor;
+    float3 hitColor = float3(0.7, 0.7, 0.7);// * lightIntensity * shadowFactor;
 
     //Ray for reflection
     ray.Origin = hitWorldPosition;

@@ -109,7 +109,7 @@ private:
 
 	nv_helpers_dx12::TopLevelASGenerator m_topLevelASGenerator;
 	AccelerationStructureBuffers m_topLevelASBuffers;
-	std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>> m_instances;
+	std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>> m_instances;
 
 	/// <summary>
 	/// Create the acceleration structure of an instance
@@ -121,9 +121,9 @@ private:
 	/// <summary>
 	/// Create the main acceleration structure that holds all instances of the scene
 	/// </summary>
-	/// <param name="instances">Pair of BLAS and transform</param>
+	/// <param name="instances">Tuple of BLAS and transform along with the hit group index indicating which hit shader should be used to render the geonmetry</param>
 	/// <param name="updateOnly">Whether to build TLAS from scratch or just update the existing one</param>
-	void CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>> &instances, bool updateOnly = false);
+	void CreateTopLevelAS(const std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>> &instances, bool updateOnly = false);
 
 	/// <summary>
 	/// Create all acceleration structures, bottom and top
