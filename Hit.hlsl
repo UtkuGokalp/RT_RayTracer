@@ -172,10 +172,6 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float checkersPattern = AnalyticalCheckersTexture(hitWorldPosition, normal, cameraPosition, instanceProperties[InstanceID()].objectToWorldNormal);
     hitColor *= checkersPattern;
 
-    // Apply visibility falloff.
-    //float t = RayTCurrent();
-    //color = lerp(color, BackgroundColor, 1.0 - exp(-0.000002*t*t*t));
-
 /*
     //This is a TraceRay() call from the benchmark project. It is left here as a documentation because it provides some insight
     //to how the parameters need to be used.
