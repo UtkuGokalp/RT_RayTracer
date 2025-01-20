@@ -33,6 +33,8 @@ cbuffer Colors : register(b0)
     float3 C;
 }
 
+static float3 lightPosition = float3(2, 2, -2);
+
 // #DXR Extra - Simple Lighting
 StructuredBuffer<InstanceProperties> instanceProperties : register(t3);
 
@@ -55,8 +57,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     
     
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-    float3 lightPos = float3(2, 2, -2);
-    float3 centerLightDir = normalize(lightPos - hitWorldPosition);
+    float3 centerLightDir = normalize(lightPosition - hitWorldPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
@@ -68,11 +69,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
 {
     // #DXR Extra - Another ray type
-    float3 lightPos = float3(2, 2, -2);
     //Find the hit position in world space
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     //Calculate the direction towards the light from the position of the ray that hit the plane
-    float3 lightDir = normalize(lightPos - hitWorldPosition);
+    float3 lightDir = normalize(lightPosition - hitWorldPosition);
     // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
     
     // #DXR Extra - Simple Lighting
@@ -88,7 +88,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
         normal = -normal;
     }
     
-    float3 centerLightDir = normalize(lightPos - hitWorldPosition);
+    float3 centerLightDir = normalize(lightPosition - hitWorldPosition);
     bool isShadowed = dot(normal, centerLightDir) < 0.f;
     
     //Ray for shadows
