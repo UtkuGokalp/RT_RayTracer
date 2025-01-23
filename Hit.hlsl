@@ -12,6 +12,7 @@ struct STriVertex
 {
     float3 position;
     float4 color;
+    float3 normal;
 };
 
 // #DXR Extra - Simple Lighting
@@ -147,8 +148,8 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float shadowFactor = isShadowed ? 0.3f : 1.0f;
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
-    //TODO: Uncomment the lightIntensity * shadowFactor multiplication for shadows
-    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity;// * shadowFactor;
+    //TODO: Uncomment the shadowFactor multiplication for shadows
+    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity; //* shadowFactor;
 
     //Ray for reflection
     ray.Origin = hitWorldPosition;
