@@ -271,20 +271,21 @@ void D3D12HelloTriangle::LoadAssets()
         // Define the geometry for a triangle.
         std::vector<Vertex> vertices;
         std::vector<UINT> indices;
-
+        
         {
             OBJFileManager ofm = OBJFileManager();
             std::vector<objl::Vertex> modelFileVertices;
 
             std::string path = "teapot.obj";
             ofm.LoadObjFile(path, modelFileVertices, indices);
-
+            
             //Convert from objl::Vertex to Vertex struct to complete the load.
             for (auto& vertex : modelFileVertices)
             {
-                XMFLOAT3 pos = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
-                XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-                vertices.push_back({ pos, color });
+                Vertex v;
+                v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+                v.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+                vertices.push_back(v);
             }
         }
 
@@ -307,7 +308,7 @@ void D3D12HelloTriangle::LoadAssets()
 
         // Copy the triangle data to the vertex buffer.
         UINT8* pVertexDataBegin;
-        CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
+        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
         ThrowIfFailed(m_modelVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
         memcpy(pVertexDataBegin, vertices.data(), vertexBufferSize);
         m_modelVertexBuffer->Unmap(0, nullptr);
@@ -725,10 +726,11 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
-    m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0 },
-                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0 },
-                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0 },
-                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0 },
+    m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0 },
+                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0 },
+                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0 },
+                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0 },
+                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0 },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2 },
     };
     CreateTopLevelAS(m_instances);
@@ -969,8 +971,8 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"ShadowMiss", {});
 
     // Hit shader setup
-    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_mengerVB->GetGPUVirtualAddress(),
-                                           (void*)m_mengerIB->GetGPUVirtualAddress(),
+    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_modelVertexBuffer->GetGPUVirtualAddress(),
+                                           (void*)m_modelIndexBuffer->GetGPUVirtualAddress(),
                                            (void*)(heapPointer),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
                                            (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
