@@ -727,10 +727,10 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
     m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0 },
-                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0 },
-                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0 },
-                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0 },
-                    //{ modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0 },
                     { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2 },
     };
     CreateTopLevelAS(m_instances);
