@@ -271,20 +271,21 @@ void D3D12HelloTriangle::LoadAssets()
         // Define the geometry for a triangle.
         std::vector<Vertex> vertices;
         std::vector<UINT> indices;
-
+        
         {
             OBJFileManager ofm = OBJFileManager();
             std::vector<objl::Vertex> modelFileVertices;
 
             std::string path = "teapot.obj";
             ofm.LoadObjFile(path, modelFileVertices, indices);
-
+            
             //Convert from objl::Vertex to Vertex struct to complete the load.
             for (auto& vertex : modelFileVertices)
             {
-                XMFLOAT3 pos = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
-                XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-                vertices.push_back({ pos, color });
+                Vertex v;
+                v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+                v.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+                vertices.push_back(v);
             }
         }
 
@@ -307,7 +308,7 @@ void D3D12HelloTriangle::LoadAssets()
 
         // Copy the triangle data to the vertex buffer.
         UINT8* pVertexDataBegin;
-        CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
+        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
         ThrowIfFailed(m_modelVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
         memcpy(pVertexDataBegin, vertices.data(), vertexBufferSize);
         m_modelVertexBuffer->Unmap(0, nullptr);
@@ -674,7 +675,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
     return buffers;
 }
 
-void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>>& instances, bool updateOnly)
+void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>>& instances, bool updateOnly)
 {
     if (!updateOnly)
     {
@@ -686,7 +687,7 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
         //Step one: Gather the instances
         for (size_t i = 0; i < instances.size(); i++)
         {
-            m_topLevelASGenerator.AddInstance(instances[i].first.Get(), instances[i].second, (UINT)i, (UINT)(i * 2) /*#DXR Extra - Another ray type makes it such that there will be 2 hit groups per instance*/);
+            m_topLevelASGenerator.AddInstance(std::get<0>(instances[i]).Get(), std::get<1>(instances[i]), (UINT)i, std::get<2>(instances[i]));
         }
 
         //Step two: Compute the memory requirements
@@ -717,8 +718,6 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::pair<ComPtr<ID3
 
 void D3D12HelloTriangle::CreateAccelerationStructures()
 {
-    //3644
-    //18960
     // Build the BLAS from triangle vertex buffer
     AccelerationStructureBuffers modelBottomLevelBuffers = CreateBottomLevelAS({ { m_modelVertexBuffer.Get(), m_modelVertexCount } }, { { m_modelIndexBuffer.Get(), m_modelIndexCount } });
     AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
@@ -727,8 +726,13 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
-    m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixIdentity() },
-                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f) }};
+    m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0 },
+                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0 },
+                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2 },
+    };
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -871,7 +875,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point).
     // Note that this recursion depth should be kept to a minimum for best performance.
     // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(2);
+    pipeline.SetMaxRecursionDepth(4);
 
     //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
     //so that later we can access the shader pointers by name.
@@ -967,8 +971,8 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"ShadowMiss", {});
 
     // Hit shader setup
-    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_mengerVB->GetGPUVirtualAddress(),
-                                           (void*)m_mengerIB->GetGPUVirtualAddress(),
+    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)m_modelVertexBuffer->GetGPUVirtualAddress(),
+                                           (void*)m_modelIndexBuffer->GetGPUVirtualAddress(),
                                            (void*)(heapPointer),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
                                            (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
@@ -1087,9 +1091,9 @@ void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
     ThrowIfFailed(m_instancePropertiesBuffer->Map(0, &readRange, (void**)&current));
     for (const auto& instance : m_instances)
     {
-        current->objectToWorld = instance.second; //Set the matrix to the matrix set for instance.
+        current->objectToWorld = std::get<1>(instance); //Set the matrix to the matrix set for instance.
         // #DXR Extra - Simple Lighting
-        XMMATRIX upper3x3 = instance.second;
+        XMMATRIX upper3x3 = std::get<1>(instance);
         // Remove the translation and lower vector of the matrix
         upper3x3.r[0].m128_f32[3] = 0.f;
         upper3x3.r[1].m128_f32[3] = 0.f;

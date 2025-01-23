@@ -1,4 +1,5 @@
 #include "Common.hlsl"
+#include "CheckersPattern.hlsli"
 
 // #DXR Extra - Another ray type
 struct ShadowHitInfo
@@ -9,7 +10,7 @@ struct ShadowHitInfo
 //This structure has the same bit mapping as the "Vertex" structure on the CPU side.
 struct STriVertex
 {
-    float3 vertex;
+    float3 position;
     float4 color;
 };
 
@@ -25,8 +26,6 @@ StructuredBuffer<int> indices : register(t1);
 // #DXR Extra - Another ray type
 // Raytracing TLAS, accessed as a SRV
 RaytracingAccelerationStructure SceneBVH : register(t2);
-// #DXR Extra - Simple Lighting
-StructuredBuffer<InstanceProperties> instanceProperties : register(t3);
 
 cbuffer Colors : register(b0)
 {
@@ -35,31 +34,38 @@ cbuffer Colors : register(b0)
     float3 C;
 }
 
+static float3 lightPosition = float3(2, 2, -2);
+
+// #DXR Extra - Simple Lighting
+StructuredBuffer<InstanceProperties> instanceProperties : register(t3);
+
+float3 CalculateNormal(float3 vertex0, float3 vertex1, float3 vertex2)
+{
+    float3 edge1 = vertex1 - vertex0;
+    float3 edge2 = vertex2 - vertex0;
+    float3 normal = normalize(cross(edge2, edge1));
+    return normal;
+}
+
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
     //float3 barycentrics = float3(1.0f - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
-    
     uint vertId = 3 * PrimitiveIndex();
     
     // #DXR Extra: Per-Instance Data
     float3 hitColor = float3(1.0f, 1.0f, 1.0f);
     
-    //hitColor = BTriVertex[indices[vertId + 0]].color * barycentrics.x +
-    //           BTriVertex[indices[vertId + 1]].color * barycentrics.y +
-    //           BTriVertex[indices[vertId + 2]].color * barycentrics.z;
-    
     // #DXR Extra - Simple Lighting
     //Calculate normals based on the vertices
-    float3 e1 = BTriVertex[indices[vertId + 1]].vertex - BTriVertex[indices[vertId + 0]].vertex;
-    float3 e2 = BTriVertex[indices[vertId + 2]].vertex - BTriVertex[indices[vertId + 0]].vertex;
-    float3 normal = normalize(cross(e2, e1));
+    float3 v0 = BTriVertex[indices[vertId + 0]].position;
+    float3 v1 = BTriVertex[indices[vertId + 1]].position;
+    float3 v2 = BTriVertex[indices[vertId + 2]].position;
+    float3 normal = CalculateNormal(v0, v1, v2);
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
     
-    //Check whether the worldOrigin and lightDirection calculations are correct or not
-    float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-    float3 lightPos = float3(2, 2, -2);
-    float3 centerLightDir = normalize(lightPos - worldOrigin);
+    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 centerLightDir = normalize(hitWorldPosition - lightPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
@@ -71,32 +77,25 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
 {
     // #DXR Extra - Another ray type
-    float3 lightPos = float3(2, 2, -2);
     //Find the hit position in world space
-    float3 worldOrigin = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     //Calculate the direction towards the light from the position of the ray that hit the plane
-    float3 lightDir = normalize(lightPos - worldOrigin);
+    float3 lightDir = normalize(lightPosition - hitWorldPosition);
     // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
     
     // #DXR Extra - Simple Lighting
     uint vertId = 3 * PrimitiveIndex();
-    float3 e1 = BTriVertex[vertId + 1].vertex - BTriVertex[vertId + 0].vertex;
-    float3 e2 = BTriVertex[vertId + 2].vertex - BTriVertex[vertId + 0].vertex;
+    float3 e1 = BTriVertex[vertId + 1].position - BTriVertex[vertId + 0].position;
+    float3 e2 = BTriVertex[vertId + 2].position - BTriVertex[vertId + 0].position;
     float3 normal = normalize(cross(e2, e1));
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
     
-    bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
-    if (isBackFacing)
-    {
-        normal = -normal;
-    }
-    
-    float3 centerLightDir = normalize(lightPos - worldOrigin);
+    float3 centerLightDir = normalize(lightPosition - hitWorldPosition);
     bool isShadowed = dot(normal, centerLightDir) < 0.f;
     
-    
+    //Ray for shadows
     RayDesc ray;
-    ray.Origin = worldOrigin;
+    ray.Origin = hitWorldPosition;
     ray.Direction = lightDir;
     ray.TMin = 0.01;
     ray.TMax = 100000;
@@ -104,7 +103,6 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // Initialize the ray payload
     ShadowHitInfo shadowPayload;
     shadowPayload.isHit = false;
-    
     TraceRay(
     // Acceleration structure
     SceneBVH,
@@ -133,7 +131,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     // the program when no geometry have been hit, for example one to return a
     // sky color for regular rendering, and another returning a full
     // visibility value for shadow rays. Shadow miss program is the 2nd miss program,
-    //so an index of 1.
+    // so an index of 1.
     1,
     // Ray information to trace
     ray,
@@ -149,6 +147,45 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float shadowFactor = isShadowed ? 0.3f : 1.0f;
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
-    float3 hitColor = float3(0.7, 0.7, 0.7) * lightIntensity * shadowFactor;
+    //TODO: Uncomment the lightIntensity * shadowFactor multiplication for shadows
+    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity;// * shadowFactor;
+
+    //Ray for reflection
+    ray.Origin = hitWorldPosition;
+    ray.Direction = reflect(WorldRayDirection(), normal);
+    ray.TMin = 0.01;
+    ray.TMax = 100000;
+    HitInfo reflectancePayload = { float4(0, 0, 0, 0) };
+    TraceRay(
+        SceneBVH, //Acceleration structure containing the scene
+        RAY_FLAG_CULL_BACK_FACING_TRIANGLES, //Flag to cull backfacing triangles (this can also be used as a debug because currently there are some weird problems with normals)
+        0xFF, //Don't mask any geometry
+        0, //No specific offset for radiance rays, just use the first shader in the SBT for now
+        0, //No stride in the SBT
+        0, //Use the first miss shader in the SBT
+        ray, //Which ray to trace
+        reflectancePayload //Payload
+    );
+
+    //Make the surface have a checker pattern.
+    float3 hitColor = platformColor * reflectancePayload.colorAndDistance.xyz;
+    float3 cameraPosition = float3(0, 0, 0); //Doesn't seem to have any effect and I don't want to mess with the memory management right now. It can be implemented later on.
+    float checkersPattern = AnalyticalCheckersTexture(hitWorldPosition, normal, cameraPosition, instanceProperties[InstanceID()].objectToWorldNormal);
+    hitColor *= checkersPattern;
+
+/*
+    //This is a TraceRay() call from the benchmark project. It is left here as a documentation because it provides some insight
+    //to how the parameters need to be used.
+    TraceRay(
+        g_scene,
+        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+        TraceRayParameters::InstanceMask,
+        TraceRayParameters::HitGroup::Offset[RayType::Radiance],
+        TraceRayParameters::HitGroup::GeometryStride,
+        TraceRayParameters::MissShader::Offset[RayType::Radiance],
+        rayDesc,
+        rayPayload
+    );
+*/
     payload.colorAndDistance = float4(hitColor, 1);
 }

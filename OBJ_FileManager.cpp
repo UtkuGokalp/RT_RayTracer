@@ -11,7 +11,7 @@ bool OBJFileManager::LoadObjFile(std::string path, std::vector<objl::Vertex>& ve
     Loader objLoader;
     //Loaded is false when the file doesn't exist, doesn't have .obj extension or has no vertices, meshes, nor colors to load.
     bool loaded = objLoader.LoadFile(path);
-    
+
     if (loaded)
     {
         std::vector<Mesh>& meshes = objLoader.LoadedMeshes;
