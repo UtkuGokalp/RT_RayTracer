@@ -12,7 +12,6 @@ struct STriVertex
 {
     float3 position;
     float4 color;
-    float3 normal;
 };
 
 // #DXR Extra - Simple Lighting
