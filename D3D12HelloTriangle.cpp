@@ -649,7 +649,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
                 0);
         }
     }
-
+    
     //Step two: Computing the sizes for the buffers
     // The AS build requires some scratch space to store temporary information.
     // The amount of scratch memory is dependent on the scene complexity.
@@ -818,6 +818,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // In a way similar to DLLs, each library is associated with a number of
     // exported symbols. This has to be done explicitly in the lines below. Note that a single library
     // can contain an arbitrary number of symbols, whose semantic is given in HLSL using the [shader("xxx")] syntax
+    //It is important to note that the symbol names MUST be unique!
     pipeline.AddLibrary(m_rayGenLibrary.Get(), { L"RayGen" });
     pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
     //L"PlaneClosestHit" is from #DXR Extra: Per-Instance Data
