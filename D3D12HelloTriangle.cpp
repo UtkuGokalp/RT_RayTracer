@@ -26,7 +26,8 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
     m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
     m_rtvDescriptorSize(0),
     uiConstructor(UIConstructor()),
-    renderUI(false)
+    renderUI(false),
+    materials({ Material() })
 {
 }
 
@@ -58,6 +59,8 @@ void D3D12HelloTriangle::OnInit()
     // #DXR Extra: Perspective Camera
     // Create a buffer to store the modelview and perspective camera matrices
     CreateCameraBuffer();
+    //Create materials buffer
+    CreateMaterialsBuffer();
     // Create the buffer containing the raytracing result (always output in a
     // UAV), and create the heap referencing the resources used by the raytracing,
     // such as the acceleration structure
@@ -770,7 +773,14 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices and colors
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
-
+    /*
+    * AddHeapRangeParameter() function parameters are defined as follows:
+        UINT,                        //BaseShaderRegister,
+        UINT,                        //NumDescriptors
+        UINT,                        //RegisterSpace
+        D3D12_DESCRIPTOR_RANGE_TYPE, //RangeType
+        UINT                         //OffsetInDescriptorsFromTableStart
+    */
     rsg.AddHeapRangesParameter(
         {
             // #DXR Extra - Another ray type
@@ -785,7 +795,8 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
             // HLSL as register(b0)
             { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Scene data*/, 2 },
             // # DXR Extra - Simple Lighting
-            { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3 }
+            { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3 },
+            { 4 /*t4*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Material array*/, 4 }
         });
     return rsg.Generate(m_device.Get(), true);
 }
@@ -907,8 +918,8 @@ void D3D12HelloTriangle::CreateRaytracingOutputBuffer()
 //Create the main heap used by shaders, which allows access to the raytracing output and the TLAS
 void D3D12HelloTriangle::CreateShaderResourceHeap()
 {
-    //4 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting
-    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 4, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    //5 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting, 1 for the materials
+    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 5, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     //Get a handle to te heap memory on the CPU side so that descriptors can be directly written to
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle_cpu = m_srvUavHeap->GetCPUDescriptorHandleForHeapStart();
@@ -949,6 +960,17 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     // Write the per-instance properties buffer view in the heap
     m_device->CreateShaderResourceView(m_instancePropertiesBuffer.Get(), &srvDesc, srvHandle_cpu);
+
+    //Materials heap slot
+    srvHandle_cpu.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.NumElements = (UINT)materials.size();
+    srvDesc.Buffer.StructureByteStride = sizeof(Material);
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    m_device->CreateShaderResourceView(materialsBuffer.Get(), &srvDesc, srvHandle_cpu);
 }
 
 void D3D12HelloTriangle::CreateShaderBindingTable()
@@ -978,7 +1000,8 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
                                            (void*)(heapPointer),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
                                            (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
-        });
+                                           (void*)materialsBuffer->GetGPUVirtualAddress(),
+                                         });
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
@@ -989,6 +1012,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
             (void*)m_globalConstantBuffer->GetGPUVirtualAddress(),
             heapPointer,
             //nullptr, //Why is this even here??
+            //TODO: Is is necessary to put the materialsBuffer here???
         });
 
     // Compute the size of the SBT given the number of shaders and their parameters
@@ -1395,4 +1419,17 @@ void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
+}
+
+void D3D12HelloTriangle::CreateMaterialsBuffer()
+{
+    //Create the buffer
+    uint64_t bufferSizeInBytes = sizeof(Material) * materials.size();
+    materialsBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), bufferSizeInBytes, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+
+    //Copy CPU memory to GPU
+    uint8_t* p_gpuData;
+    ThrowIfFailed(materialsBuffer->Map(0, nullptr, (void**)&p_gpuData));
+    memcpy(p_gpuData, (const void*)materials.data(), bufferSizeInBytes);
+    materialsBuffer->Unmap(0, nullptr);
 }

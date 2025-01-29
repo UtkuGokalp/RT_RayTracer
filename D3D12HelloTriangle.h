@@ -81,9 +81,8 @@ private:
 		float roughness;
 		float metallic;
 
-		Material(XMFLOAT4 albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
-			     float roughness = 0.5f,
-			     float metallic  = 0.5f) : albedo(albedo), roughness(roughness), metallic(metallic)
+		Material(XMFLOAT4 albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), float roughness = 0.5f, float metallic  = 0.5f)
+			: albedo(albedo), roughness(roughness), metallic(metallic)
 		{
 
 		}
@@ -283,5 +282,8 @@ private:
 	bool renderUI;
 
 	//Material system
+	//A default material is added in the constructor. New materials start from index 1 unless the default material is removed.
 	std::vector<Material> materials;
+	ComPtr<ID3D12Resource> materialsBuffer;
+	void CreateMaterialsBuffer();
 };

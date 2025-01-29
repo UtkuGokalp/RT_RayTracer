@@ -32,6 +32,9 @@ StructuredBuffer<int> indices : register(t1);
 // #DXR Extra - Another ray type
 // Raytracing TLAS, accessed as a SRV
 RaytracingAccelerationStructure SceneBVH : register(t2);
+// #DXR Extra - Simple Lighting
+StructuredBuffer<InstanceProperties> instanceProperties : register(t3);
+StructuredBuffer<Material> materials : register(t4);
 
 cbuffer Colors : register(b0)
 {
@@ -41,9 +44,6 @@ cbuffer Colors : register(b0)
 }
 
 static float3 lightPosition = float3(2, 2, -2);
-
-// #DXR Extra - Simple Lighting
-StructuredBuffer<InstanceProperties> instanceProperties : register(t3);
 
 float3 CalculateNormal(float3 vertex0, float3 vertex1, float3 vertex2)
 {
@@ -75,6 +75,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
+    hitColor *= materials[0].albedo.xyz;
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
 
