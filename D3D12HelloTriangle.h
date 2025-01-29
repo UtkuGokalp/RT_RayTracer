@@ -45,6 +45,11 @@ public:
 private:
 	static const UINT FrameCount = 2;
 
+	/*
+	//The version of the Vertex struct below is used for creating Menger Fractal geometry.
+	//For implementing a material system, this was disabled however the Menger Fractal creation code
+	//isn't removed from the other parts of the codebase yet. So if those parts of the codebase are ever used,
+	//the structure below for should be used for vertices. Currently those parts of the codebase are not used.
 	struct Vertex
 	{
 		Vertex()
@@ -58,6 +63,16 @@ private:
 		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
 		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z), color(color) {}
 		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position), color(color) {}
+	};*/
+
+	struct Vertex
+	{
+		XMFLOAT3 position;
+		Vertex(XMFLOAT3 position = XMFLOAT3(0.0f, 0.0f, 0.0f)) : position(position) { }
+		//The constructors below are unused. They are only for providing compatibility
+		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
+		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z) {}
+		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position) {}
 	};
 
 	// Pipeline objects.

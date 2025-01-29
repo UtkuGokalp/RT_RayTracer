@@ -284,7 +284,6 @@ void D3D12HelloTriangle::LoadAssets()
             {
                 Vertex v;
                 v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
-                v.color = { 1.0f, 1.0f, 1.0f, 1.0f };
                 vertices.push_back(v);
             }
         }
@@ -803,7 +802,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // characteristics in a single structure used by DXR to invoke the shaders and
     // manage temporary memory during raytracing
     nv_helpers_dx12::RayTracingPipelineGenerator pipeline(m_device.Get());
-
+    
     //First we compile the HLSL shaders to DXIL so that they can be used in GPUs.
     //The raytracing pipeline contains all the shaders that may be executed during the raytracing process.
     //The codes are separated semantically to raygen, miss and hit for clarity. Any code layout can be used.
@@ -1145,12 +1144,12 @@ void D3D12HelloTriangle::CreatePlaneVB()
 {
     // Define the geometry for a plane.
     Vertex planeVertices[] = {
-        {{-1.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 0
-        {{-1.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
-        {{01.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
-        {{01.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
-        {{-1.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
-        {{01.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}  // 4
+        {{-1.5f, -.8f, 01.5f}}, // 0
+        {{-1.5f, -.8f, -1.5f}}, // 1
+        {{01.5f, -.8f, 01.5f}}, // 2
+        {{01.5f, -.8f, 01.5f}}, // 2
+        {{-1.5f, -.8f, -1.5f}}, // 1
+        {{01.5f, -.8f, -1.5f}}  // 4
     };
     const UINT planeBufferSize = sizeof(planeVertices);
 

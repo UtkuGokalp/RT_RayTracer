@@ -11,7 +11,6 @@ struct ShadowHitInfo
 struct STriVertex
 {
     float3 position;
-    float4 color;
 };
 
 // #DXR Extra - Simple Lighting
