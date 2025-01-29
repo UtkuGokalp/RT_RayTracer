@@ -368,6 +368,7 @@ void D3D12HelloTriangle::LoadAssets()
 // Update frame-based values. This method is called before each render.
 void D3D12HelloTriangle::OnUpdate()
 {
+    UpdateMaterialsBuffer();
     // #DXR Extra: Perspective Camera
     UpdateCameraBuffer();
     // #DXR Extra - Refitting
@@ -1423,11 +1424,14 @@ void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
 
 void D3D12HelloTriangle::CreateMaterialsBuffer()
 {
-    //Create the buffer
     uint64_t bufferSizeInBytes = sizeof(Material) * materials.size();
     materialsBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), bufferSizeInBytes, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+    UpdateMaterialsBuffer();
+}
 
-    //Copy CPU memory to GPU
+void D3D12HelloTriangle::UpdateMaterialsBuffer()
+{
+    uint64_t bufferSizeInBytes = sizeof(Material) * materials.size();
     uint8_t* p_gpuData;
     ThrowIfFailed(materialsBuffer->Map(0, nullptr, (void**)&p_gpuData));
     memcpy(p_gpuData, (const void*)materials.data(), bufferSizeInBytes);

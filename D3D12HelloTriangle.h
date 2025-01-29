@@ -286,4 +286,5 @@ private:
 	std::vector<Material> materials;
 	ComPtr<ID3D12Resource> materialsBuffer;
 	void CreateMaterialsBuffer();
+	void UpdateMaterialsBuffer();
 };
