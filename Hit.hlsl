@@ -13,6 +13,13 @@ struct STriVertex
     float3 position;
 };
 
+struct Material
+{
+	float4 albedo;
+	float roughness;
+	float metallic;
+};
+
 // #DXR Extra - Simple Lighting
 struct InstanceProperties
 {

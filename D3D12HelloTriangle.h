@@ -75,6 +75,20 @@ private:
 		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position) {}
 	};
 
+	struct Material
+	{
+		XMFLOAT4 albedo;
+		float roughness;
+		float metallic;
+
+		Material(XMFLOAT4 albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+			     float roughness = 0.5f,
+			     float metallic  = 0.5f) : albedo(albedo), roughness(roughness), metallic(metallic)
+		{
+
+		}
+	};
+
 	// Pipeline objects.
 	CD3DX12_VIEWPORT m_viewport;
 	CD3DX12_RECT m_scissorRect;
