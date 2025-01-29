@@ -134,11 +134,25 @@ private:
 		ComPtr<ID3D12Resource> pInstanceDesc; // Hold the matrices of the instances
 	};
 
+	struct TLASParams
+	{
+		//std::tuple < ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT
+		ComPtr<ID3D12Resource> blas;
+		DirectX::XMMATRIX transformMatrix;
+		UINT hitGroupIndex;
+		UINT materialIndex;
+
+		TLASParams(const ComPtr<ID3D12Resource>& blas, const DirectX::XMMATRIX& transformMatrix, const UINT& hitGroupIndex, const UINT& materialIndex)
+			: blas(blas), transformMatrix(transformMatrix), hitGroupIndex(hitGroupIndex), materialIndex(materialIndex)
+		{
+		}
+	};
+
 	ComPtr<ID3D12Resource> m_bottomLevelAS; // Storage for the bottom Level AS
 
 	nv_helpers_dx12::TopLevelASGenerator m_topLevelASGenerator;
 	AccelerationStructureBuffers m_topLevelASBuffers;
-	std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>> m_instances;
+	std::vector<TLASParams> m_instances;
 
 	/// <summary>
 	/// Create the acceleration structure of an instance
@@ -150,9 +164,9 @@ private:
 	/// <summary>
 	/// Create the main acceleration structure that holds all instances of the scene
 	/// </summary>
-	/// <param name="instances">Tuple of BLAS and transform along with the hit group index indicating which hit shader should be used to render the geonmetry</param>
+	/// <param name="instances">Parameters of TLAS</param>
 	/// <param name="updateOnly">Whether to build TLAS from scratch or just update the existing one</param>
-	void CreateTopLevelAS(const std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>> &instances, bool updateOnly = false);
+	void CreateTopLevelAS(const std::vector<TLASParams> &instances, bool updateOnly = false);
 
 	/// <summary>
 	/// Create all acceleration structures, bottom and top
@@ -267,4 +281,7 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_imguiFontDescriptorHeap;
 	UIConstructor uiConstructor;
 	bool renderUI;
+
+	//Material system
+	std::vector<Material> materials;
 };
