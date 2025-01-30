@@ -1,6 +1,8 @@
 #include "Common.hlsl"
 #include "CheckersPattern.hlsli"
 
+#define PI 3.14159265359
+
 // #DXR Extra - Another ray type
 struct ShadowHitInfo
 {
@@ -43,7 +45,8 @@ cbuffer Colors : register(b0)
     float3 C;
 }
 
-static float3 lightPosition = float3(2, 2, -2);
+//static float3 lightPosition = float3(2, 2, -2);
+static float3 lightPosition = float3(0, 5, 0);
 
 float3 CalculateNormal(float3 vertex0, float3 vertex1, float3 vertex2)
 {
@@ -53,17 +56,71 @@ float3 CalculateNormal(float3 vertex0, float3 vertex1, float3 vertex2)
     return normal;
 }
 
+float rand_range05(in float2 uv)
+{
+    float2 noise = (frac(sin(dot(uv ,float2(12.9898,78.233)*2.0)) * 43758.5453));
+    return abs(noise.x + noise.y) * 0.5 - 0.5f;
+}
+
+// Normal Distribution Function: GGX/Trowbridge-Reitz
+float D_GGX(float NdotH, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float denom = (NdotH * NdotH * (a2 - 1.0) + 1.0);
+    return a2 / (PI * denom * denom);
+}
+
+// Fresnel-Schlick Approximation
+float3 Fresnel_Schlick(float cosTheta, float3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// Smith-Schlick GGX Geometry function
+float G_SmithSchlickGGX(float NdotV, float NdotL, float roughness)
+{
+    float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;
+    float G_V = NdotV / (NdotV * (1.0 - k) + k);
+    float G_L = NdotL / (NdotL * (1.0 - k) + k);
+    return G_V * G_L;
+}
+
+// PBR shading function
+float3 PBR_Shading(float3 normal, float3 viewDir, float3 lightDir, float3 albedo, float roughness, float metallic)
+{
+    float3 halfwayDir = normalize(viewDir + lightDir);
+    
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float NdotV = max(dot(normal, viewDir), 0.0);
+    float NdotH = max(dot(normal, halfwayDir), 0.0);
+    float VdotH = max(dot(viewDir, halfwayDir), 0.0);
+    
+    // Fresnel reflectance at normal incidence
+    float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, metallic);
+    float3 F = Fresnel_Schlick(VdotH, F0);
+
+    // Specular reflection
+    float D = D_GGX(NdotH, roughness);
+    float G = G_SmithSchlickGGX(NdotV, NdotL, roughness);
+    
+    float3 specular = (D * F * G) / (4.0 * NdotV * NdotL + 0.001); // Avoid division by zero
+    
+    // Diffuse (only for non-metallic)
+    float3 kD = (1.0 - F) * (1.0 - metallic);
+    float3 diffuse = kD * albedo / PI;
+
+    return (diffuse + specular) * NdotL;
+}
+
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
-    //float3 barycentrics = float3(1.0f - attrib.bary.x - attrib.bary.y, attrib.bary.x, attrib.bary.y);
-    uint vertId = 3 * PrimitiveIndex();
-    
-    // #DXR Extra: Per-Instance Data
+    Material material = materials[0];
     float3 hitColor = float3(1.0f, 1.0f, 1.0f);
     
-    // #DXR Extra - Simple Lighting
     //Calculate normals based on the vertices
+    uint vertId = 3 * PrimitiveIndex();
     float3 v0 = BTriVertex[indices[vertId + 0]].position;
     float3 v1 = BTriVertex[indices[vertId + 1]].position;
     float3 v2 = BTriVertex[indices[vertId + 2]].position;
@@ -74,8 +131,11 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 centerLightDir = normalize(hitWorldPosition - lightPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
-    hitColor *= lightIntensity;
-    hitColor *= materials[0].albedo.xyz;
+    //hitColor *= lightIntensity;
+    //TODO: WorldRayOrigin() needs to be changed for non-primary rays since their origin isn't at camera's position
+    float3 viewDir = normalize(WorldRayOrigin() - hitWorldPosition);
+    hitColor = PBR_Shading(normal, viewDir, centerLightDir, material.albedo.xyz, material.roughness, material.metallic);
+
     payload.colorAndDistance = float4(hitColor, RayTCurrent());
 }
 

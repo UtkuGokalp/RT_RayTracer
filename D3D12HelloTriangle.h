@@ -81,7 +81,7 @@ private:
 		float roughness;
 		float metallic;
 
-		Material(XMFLOAT4 albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), float roughness = 0.5f, float metallic  = 0.5f)
+		Material(XMFLOAT4 albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), float roughness = 1.0f, float metallic  = 0.0f)
 			: albedo(albedo), roughness(roughness), metallic(metallic)
 		{
 
