@@ -168,7 +168,9 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     ray.Direction = reflect(WorldRayDirection(), normal);
     ray.TMin = 0.01;
     ray.TMax = 100000;
-    HitInfo reflectancePayload = { float4(0, 0, 0, 0) };
+    HitInfo reflectancePayload;
+    reflectancePayload.hitGeometry = false;
+    reflectancePayload.colorAndDistance = float4(0, 0, 0, 0);
     TraceRay(
         SceneBVH, //Acceleration structure containing the scene
         RAY_FLAG_CULL_BACK_FACING_TRIANGLES, //Flag to cull backfacing triangles (this can also be used as a debug because currently there are some weird problems with normals)
