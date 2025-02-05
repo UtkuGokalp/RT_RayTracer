@@ -56,25 +56,20 @@ float3 CalculateNormal(float3 vertex0, float3 vertex1, float3 vertex2)
     return normal;
 }
 
-float rand_range05(in float2 uv)
-{
-    float2 noise = (frac(sin(dot(uv ,float2(12.9898,78.233)*2.0)) * 43758.5453));
-    return abs(noise.x + noise.y) * 0.5 - 0.5f;
-}
-
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
     Material material = materials[0];
     float3 surfaceColor = material.albedo.xyz;
     
-    uint MAX_BOUNCE_COUNT = 1;
+    uint MAX_BOUNCE_COUNT = 5;
     if (payload.bounceCount > MAX_BOUNCE_COUNT)
     {
         payload.colorAndDistance = float4(surfaceColor.xyz, RayTCurrent());
         return;
     }
 
+    //Calculate normals based on the vertices
     uint vertId = 3 * PrimitiveIndex();
     float3 v0 = BTriVertex[indices[vertId + 0]].position;
     float3 v1 = BTriVertex[indices[vertId + 1]].position;
@@ -82,10 +77,17 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 normal = CalculateNormal(v0, v1, v2);
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
 
-    float3 viewDir = -normalize(WorldRayDirection());
-    float3 reflectionDirection = normalize(reflect(viewDir, normal));
+    //Calculate lighting
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 centerLightDir = normalize(hitWorldPosition - lightPosition);
+    float factor = dot(normal, centerLightDir);
+    float lightIntensity = max(0.0f, factor);
+    surfaceColor.rgb *= lightIntensity;
+    payload.colorAndDistance = float4(surfaceColor.rgb, RayTCurrent());
 
+    //Reflect a new ray
+    float3 viewDir = normalize(WorldRayDirection());
+    float3 reflectionDirection = normalize(reflect(viewDir, normal));
     RayDesc reflectedRay;
     reflectedRay.Origin = hitWorldPosition + reflectionDirection * 0.001f; // Offset to avoid self-intersection
     reflectedRay.Direction = reflectionDirection;
@@ -94,20 +96,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     HitInfo reflectedPayload;
     reflectedPayload.colorAndDistance = float4(0, 0, 0, 0);
     reflectedPayload.bounceCount = payload.bounceCount + 1;
-    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF,
-            0, 0, 0, reflectedRay, reflectedPayload);
+    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, reflectedRay, reflectedPayload);
 
-    float reflectivity = 1.0f;
+    float reflectivity = 0.5f;
     payload.colorAndDistance.rgb = lerp(surfaceColor, reflectedPayload.colorAndDistance.rgb, reflectivity);
-
-    //Calculate normals based on the vertices
-    /*
-    float3 centerLightDir = normalize(hitWorldPosition - lightPosition);
-    float factor = dot(normal, centerLightDir);
-    float lightIntensity = max(0.0f, factor);
-    hitColor *= lightIntensity;
-
-    payload.colorAndDistance = float4(hitColor, RayTCurrent());*/
 }
 
 // #DXR Extra: Per-Instance Data
@@ -186,7 +178,7 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
     //TODO: Uncomment the shadowFactor multiplication for shadows
-    float3 platformColor = float3(1.0f, 1.0f, 1.0f);// * lightIntensity; //* shadowFactor;
+    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity;// * shadowFactor;
 
     //Ray for reflection
     /*ray.Origin = hitWorldPosition;
@@ -208,9 +200,9 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
 
     //Make the surface have a checker pattern.
     float3 hitColor = platformColor;// * reflectancePayload.colorAndDistance.xyz;
-    float3 cameraPosition = float3(0, 0, 0); //Doesn't seem to have any effect and I don't want to mess with the memory management right now. It can be implemented later on.
+    /*float3 cameraPosition = float3(0, 0, 0); //Doesn't seem to have any effect and I don't want to mess with the memory management right now. It can be implemented later on.
     float checkersPattern = AnalyticalCheckersTexture(hitWorldPosition, normal, cameraPosition, instanceProperties[InstanceID()].objectToWorldNormal);
-    hitColor *= checkersPattern;
+    hitColor *= checkersPattern;*/
 
 /*
     //This is a TraceRay() call from the benchmark project. It is left here as a documentation because it provides some insight

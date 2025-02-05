@@ -276,19 +276,60 @@ void D3D12HelloTriangle::LoadAssets()
         std::vector<UINT> indices;
         
         {
-            OBJFileManager ofm = OBJFileManager();
-            std::vector<objl::Vertex> modelFileVertices;
-
-            std::string path = "teapot.obj";
-            ofm.LoadObjFile(path, modelFileVertices, indices);
-            
-            //Convert from objl::Vertex to Vertex struct to complete the load.
-            for (auto& vertex : modelFileVertices)
+            bool createCube = false; //Set this to true to make a cube for debugging purposes.
+            if (createCube)
             {
-                Vertex v;
-                v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
-                vertices.push_back(v);
+                //Box vertices for debugging.
+                indices = {
+                    //Top
+                    2, 7, 6,
+                    2, 3, 7,
+                    //Bottom
+                    0, 4, 5,
+                    0, 5, 1,
+                    //Left
+                    0, 6, 2,
+                    0, 4, 6,
+                    //Right
+                    1, 3, 7,
+                    1, 7, 5,
+                    //Front
+                    0, 2, 3,
+                    0, 3, 1,
+                    //Back
+                    4, 7, 6,
+                    4, 5, 7
+                };
+
+                vertices =
+                {
+                    Vertex({-1, -1,  1}),//0
+                    Vertex({ 1, -1,  1}),//1
+                    Vertex({-1,  1,  1}),//2
+                    Vertex({ 1,  1,  1}),//3
+                    Vertex({-1, -1, -1}),//4
+                    Vertex({ 1, -1, -1}),//5
+                    Vertex({-1,  1, -1}),//6
+                    Vertex({ 1,  1, -1})//7
+                };
             }
+            else
+            {
+                OBJFileManager ofm = OBJFileManager();
+                std::vector<objl::Vertex> modelFileVertices;
+
+                std::string path = "teapot.obj";
+                ofm.LoadObjFile(path, modelFileVertices, indices);
+
+                //Convert from objl::Vertex to Vertex struct to complete the load.
+                for (auto& vertex : modelFileVertices)
+                {
+                    Vertex v;
+                    v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+                    vertices.push_back(v);
+                }
+            }
+            
         }
 
         m_modelVertexCount = vertices.size();
@@ -730,12 +771,14 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
-    m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0, 0 ),
+
+    m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.5f, 0.0f), 0, 0 ),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
-                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
-                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
-                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
-                    TLASParams(planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2, 0)
+                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
+                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
+                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
+                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.5f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2, 0)
                   };
 
     CreateTopLevelAS(m_instances);
@@ -877,6 +920,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // It is important to keep this value as low as possible as a too high value
     // would result in unnecessary memory consumption and cache trashing.
     const UINT HLSL_UINT_SIZE_IN_BYTES = 4;
+    const UINT HLSL_FLOAT2_SIZE_IN_BYTES = 8;
     const UINT HLSL_FLOAT4_SIZE_IN_BYTES = 16;
     pipeline.SetMaxPayloadSize(HLSL_UINT_SIZE_IN_BYTES + HLSL_FLOAT4_SIZE_IN_BYTES);
 
@@ -884,14 +928,14 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // We just use the barycentric coordinates defined by the weights u,v
     // of the last two vertices of the triangle. The actual barycentrics can
     // be obtained using float3 barycentrics = float3(1.f-u-v, u, v);
-    pipeline.SetMaxAttributeSize(2 * sizeof(float)); // barycentric coordinates (float2 type in HLSL)
+    pipeline.SetMaxAttributeSize(HLSL_FLOAT2_SIZE_IN_BYTES); // barycentric coordinates
 
     // The raytracing process can shoot rays from existing hit points, resulting
     // in nested TraceRay calls. Our code includes shadow rays, which means
     // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point).
     // Note that this recursion depth should be kept to a minimum for best performance.
     // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(4);
+    pipeline.SetMaxRecursionDepth(8);
 
     //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
     //so that later we can access the shader pointers by name.
