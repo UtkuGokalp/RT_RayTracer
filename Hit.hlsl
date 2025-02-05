@@ -66,23 +66,48 @@ float rand_range05(in float2 uv)
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
     Material material = materials[0];
-    float3 hitColor = float3(1.0f, 1.0f, 1.0f);
+    float3 surfaceColor = material.albedo.xyz;
     
-    //Calculate normals based on the vertices
+    uint MAX_BOUNCE_COUNT = 1;
+    if (payload.bounceCount > MAX_BOUNCE_COUNT)
+    {
+        payload.colorAndDistance = float4(surfaceColor.xyz, RayTCurrent());
+        return;
+    }
+
     uint vertId = 3 * PrimitiveIndex();
     float3 v0 = BTriVertex[indices[vertId + 0]].position;
     float3 v1 = BTriVertex[indices[vertId + 1]].position;
     float3 v2 = BTriVertex[indices[vertId + 2]].position;
     float3 normal = CalculateNormal(v0, v1, v2);
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
-    
+
+    float3 viewDir = -normalize(WorldRayDirection());
+    float3 reflectionDirection = normalize(reflect(viewDir, normal));
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+
+    RayDesc reflectedRay;
+    reflectedRay.Origin = hitWorldPosition + reflectionDirection * 0.001f; // Offset to avoid self-intersection
+    reflectedRay.Direction = reflectionDirection;
+    reflectedRay.TMin = 0.001f;
+    reflectedRay.TMax = 1000.0f;
+    HitInfo reflectedPayload;
+    reflectedPayload.colorAndDistance = float4(0, 0, 0, 0);
+    reflectedPayload.bounceCount = payload.bounceCount + 1;
+    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF,
+            0, 0, 0, reflectedRay, reflectedPayload);
+
+    float reflectivity = 1.0f;
+    payload.colorAndDistance.rgb = lerp(surfaceColor, reflectedPayload.colorAndDistance.rgb, reflectivity);
+
+    //Calculate normals based on the vertices
+    /*
     float3 centerLightDir = normalize(hitWorldPosition - lightPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
     hitColor *= lightIntensity;
 
-    payload.colorAndDistance = float4(hitColor, RayTCurrent());
+    payload.colorAndDistance = float4(hitColor, RayTCurrent());*/
 }
 
 // #DXR Extra: Per-Instance Data
@@ -164,12 +189,11 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float3 platformColor = float3(1.0f, 1.0f, 1.0f);// * lightIntensity; //* shadowFactor;
 
     //Ray for reflection
-    ray.Origin = hitWorldPosition;
+    /*ray.Origin = hitWorldPosition;
     ray.Direction = reflect(WorldRayDirection(), normal);
     ray.TMin = 0.01;
     ray.TMax = 100000;
     HitInfo reflectancePayload;
-    reflectancePayload.hitGeometry = false;
     reflectancePayload.colorAndDistance = float4(0, 0, 0, 0);
     TraceRay(
         SceneBVH, //Acceleration structure containing the scene
@@ -180,10 +204,10 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
         0, //Use the first miss shader in the SBT
         ray, //Which ray to trace
         reflectancePayload //Payload
-    );
+    );*/
 
     //Make the surface have a checker pattern.
-    float3 hitColor = platformColor * reflectancePayload.colorAndDistance.xyz;
+    float3 hitColor = platformColor;// * reflectancePayload.colorAndDistance.xyz;
     float3 cameraPosition = float3(0, 0, 0); //Doesn't seem to have any effect and I don't want to mess with the memory management right now. It can be implemented later on.
     float checkersPattern = AnalyticalCheckersTexture(hitWorldPosition, normal, cameraPosition, instanceProperties[InstanceID()].objectToWorldNormal);
     hitColor *= checkersPattern;

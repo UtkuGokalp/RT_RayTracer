@@ -876,9 +876,9 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // ie. the data exchanged between shaders, such as the HitInfo structure in the HLSL code.
     // It is important to keep this value as low as possible as a too high value
     // would result in unnecessary memory consumption and cache trashing.
-    const UINT HLSL_BOOL_SIZE_IN_BYTES = 4;
+    const UINT HLSL_UINT_SIZE_IN_BYTES = 4;
     const UINT HLSL_FLOAT4_SIZE_IN_BYTES = 16;
-    pipeline.SetMaxPayloadSize(HLSL_BOOL_SIZE_IN_BYTES + HLSL_FLOAT4_SIZE_IN_BYTES);
+    pipeline.SetMaxPayloadSize(HLSL_UINT_SIZE_IN_BYTES + HLSL_FLOAT4_SIZE_IN_BYTES);
 
     // Upon hitting a surface, DXR can provide several attributes to the hit.
     // We just use the barycentric coordinates defined by the weights u,v

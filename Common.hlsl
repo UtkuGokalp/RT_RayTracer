@@ -5,7 +5,7 @@
 // D3D12_RAYTRACING_SHADER_CONFIG pipeline subobjet.
 struct HitInfo
 {
-    bool hitGeometry;
+    uint bounceCount;
     float4 colorAndDistance;
 };
 
