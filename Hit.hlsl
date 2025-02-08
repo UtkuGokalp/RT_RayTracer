@@ -13,6 +13,7 @@ struct ShadowHitInfo
 struct STriVertex
 {
     float3 position;
+    float3 normal;
 };
 
 struct Material
@@ -46,9 +47,9 @@ cbuffer Colors : register(b0)
 }
 
 //static float3 lightPosition = float3(2, 2, -2);
-static float3 lightPosition = float3(0, 5, 0);
+static float3 lightPosition = float3(0, 10, 0);
 
-float3 CalculateNormal(float3 vertex0, float3 vertex1, float3 vertex2)
+float3 ComputeFaceNormal(float3 vertex0, float3 vertex1, float3 vertex2)
 {
     float3 edge1 = vertex1 - vertex0;
     float3 edge2 = vertex2 - vertex0;
@@ -59,31 +60,31 @@ float3 CalculateNormal(float3 vertex0, float3 vertex1, float3 vertex2)
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, Attributes attrib)
 {
+    float3 barycentrics = float3(attrib.bary.x, attrib.bary.y, 1.0f - attrib.bary.x - attrib.bary.y);
     Material material = materials[0];
     float3 surfaceColor = material.albedo.xyz;
     
-    uint MAX_BOUNCE_COUNT = 5;
+    uint MAX_BOUNCE_COUNT = 1;
     if (payload.bounceCount > MAX_BOUNCE_COUNT)
     {
         payload.colorAndDistance = float4(surfaceColor.xyz, RayTCurrent());
         return;
     }
 
-    //Calculate normals based on the vertices
+    //Interpolate vertex normals with barycentric coordinates
     uint vertId = 3 * PrimitiveIndex();
-    float3 v0 = BTriVertex[indices[vertId + 0]].position;
-    float3 v1 = BTriVertex[indices[vertId + 1]].position;
-    float3 v2 = BTriVertex[indices[vertId + 2]].position;
-    float3 normal = CalculateNormal(v0, v1, v2);
-    normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
+    float3 n0 = BTriVertex[indices[vertId + 1]].normal;
+    float3 n1 = BTriVertex[indices[vertId + 2]].normal;
+    float3 n2 = BTriVertex[indices[vertId + 0]].normal;
 
+    float3 normal = normalize(n0 * barycentrics.x + n1 * barycentrics.y + n2 * barycentrics.z);
+    normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
     //Calculate lighting
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-    float3 centerLightDir = normalize(hitWorldPosition - lightPosition);
+    float3 centerLightDir = -normalize(lightPosition - hitWorldPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
     surfaceColor.rgb *= lightIntensity;
-    payload.colorAndDistance = float4(surfaceColor.rgb, RayTCurrent());
 
     //Reflect a new ray
     float3 viewDir = normalize(WorldRayDirection());
@@ -98,7 +99,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     reflectedPayload.bounceCount = payload.bounceCount + 1;
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, reflectedRay, reflectedPayload);
 
-    float reflectivity = 0.5f;
+    float reflectivity = InstanceID() == 0 ? 0.3f : 0.0f;
     payload.colorAndDistance.rgb = lerp(surfaceColor, reflectedPayload.colorAndDistance.rgb, reflectivity);
 }
 
@@ -177,8 +178,8 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float shadowFactor = isShadowed ? 0.3f : 1.0f;
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
-    //TODO: Uncomment the shadowFactor multiplication for shadows
-    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity;// * shadowFactor;
+    //TODO: Uncomment the shadowFactor multiplication for shadows (its issue is probably because of the scaling of the platform, try changing the vertices instead of scaling the model)
+    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity; //* shadowFactor;
 
     //Ray for reflection
     /*ray.Origin = hitWorldPosition;

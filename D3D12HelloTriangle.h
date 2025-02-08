@@ -68,12 +68,14 @@ private:
 	struct Vertex
 	{
 		XMFLOAT3 position;
+		XMFLOAT3 normal;
 		Vertex(XMFLOAT3 position = XMFLOAT3(0.0f, 0.0f, 0.0f)) : position(position) { }
 		//The constructors below are unused. They are only for providing compatibility
 		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
 		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z) {}
 		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position) {}
 	};
+	void ComputeVertexNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 
 	struct Material
 	{

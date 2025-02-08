@@ -187,6 +187,41 @@ void D3D12HelloTriangle::LoadPipeline()
     CreateDepthBuffer();
 }
 
+// Compute face normals and distribute them as vertex normals
+void D3D12HelloTriangle::ComputeVertexNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+{
+    // Step 1: Initialize vertex normals to zero
+    std::vector<XMFLOAT3> tempNormals(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
+
+    // Step 2: Iterate through each triangle and compute the face normal
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        uint32_t i0 = indices[i];
+        uint32_t i1 = indices[i + 1];
+        uint32_t i2 = indices[i + 2];
+
+        XMVECTOR v0 = XMLoadFloat3(&vertices[i0].position);
+        XMVECTOR v1 = XMLoadFloat3(&vertices[i1].position);
+        XMVECTOR v2 = XMLoadFloat3(&vertices[i2].position);
+
+        // Compute the face normal
+        XMVECTOR edge1 = v1 - v0;
+        XMVECTOR edge2 = v2 - v0;
+        XMVECTOR normal = XMVector3Normalize(XMVector3Cross(edge1, edge2));
+
+        // Accumulate the normal for each vertex of the triangle
+        XMStoreFloat3(&tempNormals[i0], XMVectorAdd(XMLoadFloat3(&tempNormals[i0]), normal));
+        XMStoreFloat3(&tempNormals[i1], XMVectorAdd(XMLoadFloat3(&tempNormals[i1]), normal));
+        XMStoreFloat3(&tempNormals[i2], XMVectorAdd(XMLoadFloat3(&tempNormals[i2]), normal));
+    }
+
+    // Step 3: Normalize all vertex normals
+    for (size_t i = 0; i < vertices.size(); i++) {
+        XMVECTOR normal = XMLoadFloat3(&tempNormals[i]);
+        normal = XMVector3Normalize(normal);
+        XMStoreFloat3(&vertices[i].normal, -normal);
+    }
+}
+
 // Load the sample assets.
 void D3D12HelloTriangle::LoadAssets()
 {
@@ -326,10 +361,12 @@ void D3D12HelloTriangle::LoadAssets()
                 {
                     Vertex v;
                     v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+                    //v.normal = XMFLOAT3(vertex.Normal.X, vertex.Normal.Y, vertex.Normal.Z);
                     vertices.push_back(v);
                 }
+
+                ComputeVertexNormals(vertices, indices);
             }
-            
         }
 
         m_modelVertexCount = vertices.size();
@@ -772,7 +809,7 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
 
-    m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, 0.5f, 0.0f), 0, 0 ),
+    m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
                     //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
                     //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
