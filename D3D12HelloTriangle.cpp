@@ -811,10 +811,10 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
 
     m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
-                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
-                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
-                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
-                    //TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
                     TLASParams(planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.5f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2, 0)
                   };
 

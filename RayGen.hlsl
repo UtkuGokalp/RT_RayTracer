@@ -30,7 +30,7 @@ void RayGen()
 {
     // Initialize the ray payload
     HitInfo payload;
-    payload.colorAndDistance = float4(0.9, 0.6, 0.2, 1.0f);
+    payload.color = float3(1.0f, 1.0f, 1.0f);
     payload.bounceCount = 0;
 
     // Get the location within the dispatched 2D grid of work items
@@ -95,5 +95,5 @@ void RayGen()
     // Payload associated to the ray, which will be used to communicate between the hit/miss
     // shaders and the raygen
     payload);
-    gOutput[launchIndex] = float4(payload.colorAndDistance.rgb, 1.0f);
+    gOutput[launchIndex] = float4(payload.color, 1.0f);
 }

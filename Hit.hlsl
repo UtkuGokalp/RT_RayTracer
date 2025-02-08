@@ -3,6 +3,20 @@
 
 #define PI 3.14159265359
 
+/*
+    //This is a TraceRay() call from the benchmark project. It is here as a documentation because it provides some insight to how the parameters need to be used.
+    TraceRay(
+        g_scene,
+        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+        TraceRayParameters::InstanceMask,
+        TraceRayParameters::HitGroup::Offset[RayType::Radiance],
+        TraceRayParameters::HitGroup::GeometryStride,
+        TraceRayParameters::MissShader::Offset[RayType::Radiance],
+        rayDesc,
+        rayPayload
+    );
+*/
+
 // #DXR Extra - Another ray type
 struct ShadowHitInfo
 {
@@ -46,7 +60,6 @@ cbuffer Colors : register(b0)
     float3 C;
 }
 
-//static float3 lightPosition = float3(2, 2, -2);
 static float3 lightPosition = float3(0, 10, 0);
 
 float3 ComputeFaceNormal(float3 vertex0, float3 vertex1, float3 vertex2)
@@ -58,33 +71,35 @@ float3 ComputeFaceNormal(float3 vertex0, float3 vertex1, float3 vertex2)
 }
 
 [shader("closesthit")]
-void ClosestHit(inout HitInfo payload, Attributes attrib)
+void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
 {
-    float3 barycentrics = float3(attrib.bary.x, attrib.bary.y, 1.0f - attrib.bary.x - attrib.bary.y);
+    float3 barycentrics = float3(attrib.barycentrics.x, attrib.barycentrics.y, 1.0f - attrib.barycentrics.x - attrib.barycentrics.y);
     Material material = materials[0];
-    float3 surfaceColor = material.albedo.xyz;
+    float3 surfaceColor = material.albedo * payload.color;
     
     uint MAX_BOUNCE_COUNT = 1;
     if (payload.bounceCount > MAX_BOUNCE_COUNT)
     {
-        payload.colorAndDistance = float4(surfaceColor.xyz, RayTCurrent());
+        payload.color = surfaceColor;
         return;
     }
 
     //Interpolate vertex normals with barycentric coordinates
     uint vertId = 3 * PrimitiveIndex();
+    //Index offsets are given in the order 1 2 0 and not 0 1 2 because the file used for debugging has the indices
+    //cycled by one. Using 0 1 2 causes the normals to get incorrectly calculated
     float3 n0 = BTriVertex[indices[vertId + 1]].normal;
     float3 n1 = BTriVertex[indices[vertId + 2]].normal;
     float3 n2 = BTriVertex[indices[vertId + 0]].normal;
-
     float3 normal = normalize(n0 * barycentrics.x + n1 * barycentrics.y + n2 * barycentrics.z);
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
+
     //Calculate lighting
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 centerLightDir = -normalize(lightPosition - hitWorldPosition);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
-    surfaceColor.rgb *= lightIntensity;
+    surfaceColor *= lightIntensity;
 
     //Reflect a new ray
     float3 viewDir = normalize(WorldRayDirection());
@@ -95,17 +110,17 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     reflectedRay.TMin = 0.001f;
     reflectedRay.TMax = 1000.0f;
     HitInfo reflectedPayload;
-    reflectedPayload.colorAndDistance = float4(0, 0, 0, 0);
+    reflectedPayload.color = float4(0, 0, 0, 0);
     reflectedPayload.bounceCount = payload.bounceCount + 1;
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, reflectedRay, reflectedPayload);
 
-    float reflectivity = InstanceID() == 0 ? 0.3f : 0.0f;
-    payload.colorAndDistance.rgb = lerp(surfaceColor, reflectedPayload.colorAndDistance.rgb, reflectivity);
+    float reflectivity = InstanceID() == 0 ? 0.5f : 0.0f;
+    payload.color = lerp(surfaceColor, reflectedPayload.color, reflectivity);
 }
 
 // #DXR Extra: Per-Instance Data
 [shader("closesthit")]
-void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
+void PlaneClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
 {
     // #DXR Extra - Another ray type
     //Find the hit position in world space
@@ -180,44 +195,5 @@ void PlaneClosestHit(inout HitInfo payload, Attributes attrib)
     float lightIntensity = max(0.0f, multiplier);
     //TODO: Uncomment the shadowFactor multiplication for shadows (its issue is probably because of the scaling of the platform, try changing the vertices instead of scaling the model)
     float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity; //* shadowFactor;
-
-    //Ray for reflection
-    /*ray.Origin = hitWorldPosition;
-    ray.Direction = reflect(WorldRayDirection(), normal);
-    ray.TMin = 0.01;
-    ray.TMax = 100000;
-    HitInfo reflectancePayload;
-    reflectancePayload.colorAndDistance = float4(0, 0, 0, 0);
-    TraceRay(
-        SceneBVH, //Acceleration structure containing the scene
-        RAY_FLAG_CULL_BACK_FACING_TRIANGLES, //Flag to cull backfacing triangles (this can also be used as a debug because currently there are some weird problems with normals)
-        0xFF, //Don't mask any geometry
-        0, //No specific offset for radiance rays, just use the first shader in the SBT for now
-        0, //No stride in the SBT
-        0, //Use the first miss shader in the SBT
-        ray, //Which ray to trace
-        reflectancePayload //Payload
-    );*/
-
-    //Make the surface have a checker pattern.
-    float3 hitColor = platformColor;// * reflectancePayload.colorAndDistance.xyz;
-    /*float3 cameraPosition = float3(0, 0, 0); //Doesn't seem to have any effect and I don't want to mess with the memory management right now. It can be implemented later on.
-    float checkersPattern = AnalyticalCheckersTexture(hitWorldPosition, normal, cameraPosition, instanceProperties[InstanceID()].objectToWorldNormal);
-    hitColor *= checkersPattern;*/
-
-/*
-    //This is a TraceRay() call from the benchmark project. It is left here as a documentation because it provides some insight
-    //to how the parameters need to be used.
-    TraceRay(
-        g_scene,
-        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
-        TraceRayParameters::InstanceMask,
-        TraceRayParameters::HitGroup::Offset[RayType::Radiance],
-        TraceRayParameters::HitGroup::GeometryStride,
-        TraceRayParameters::MissShader::Offset[RayType::Radiance],
-        rayDesc,
-        rayPayload
-    );
-*/
-    payload.colorAndDistance = float4(hitColor, 1);
+    payload.color = platformColor;
 }

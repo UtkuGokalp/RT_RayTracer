@@ -361,5 +361,6 @@
   </ItemGroup>
   <ItemGroup>
     <Object Include="teapot.obj" />
+    <Object Include="teapot_with_normals.obj" />
   </ItemGroup>
 </Project>

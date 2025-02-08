@@ -6,12 +6,13 @@
 struct HitInfo
 {
     uint bounceCount;
-    float4 colorAndDistance;
+    float3 color;
 };
 
 // Attributes output by the DXR when hitting a surface,
 // here the barycentric coordinates
-struct Attributes
+/*struct Attributes
 {
     float2 bary;
 };
+*/
