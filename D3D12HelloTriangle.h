@@ -79,11 +79,11 @@ private:
 
 	struct Material
 	{
-		XMFLOAT4 albedo;
+		XMFLOAT3 albedo;
 		float roughness;
 		float metallic;
 
-		Material(XMFLOAT4 albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), float roughness = 1.0f, float metallic  = 0.0f)
+		Material(XMFLOAT3 albedo = XMFLOAT3(1.0f, 1.0f, 1.0f), float roughness = 1.0f, float metallic  = 0.0f)
 			: albedo(albedo), roughness(roughness), metallic(metallic)
 		{
 

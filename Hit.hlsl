@@ -32,7 +32,7 @@ struct STriVertex
 
 struct Material
 {
-	float4 albedo;
+	float3 albedo;
 	float roughness;
 	float metallic;
 };
@@ -70,20 +70,8 @@ float3 ComputeFaceNormal(float3 vertex0, float3 vertex1, float3 vertex2)
     return normal;
 }
 
-[shader("closesthit")]
-void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
+float3 CalculateInterpolatedNormal(float3 barycentrics)
 {
-    float3 barycentrics = float3(attrib.barycentrics.x, attrib.barycentrics.y, 1.0f - attrib.barycentrics.x - attrib.barycentrics.y);
-    Material material = materials[0];
-    float3 surfaceColor = material.albedo * payload.color;
-    
-    uint MAX_BOUNCE_COUNT = 1;
-    if (payload.bounceCount > MAX_BOUNCE_COUNT)
-    {
-        payload.color = surfaceColor;
-        return;
-    }
-
     //Interpolate vertex normals with barycentric coordinates
     uint vertId = 3 * PrimitiveIndex();
     //Index offsets are given in the order 1 2 0 and not 0 1 2 because the file used for debugging has the indices
@@ -93,29 +81,73 @@ void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes att
     float3 n2 = BTriVertex[indices[vertId + 0]].normal;
     float3 normal = normalize(n0 * barycentrics.x + n1 * barycentrics.y + n2 * barycentrics.z);
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.0f)).xyz;
+    return normalize(normal);
+}
 
-    //Calculate lighting
-    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-    float3 centerLightDir = -normalize(lightPosition - hitWorldPosition);
+float CalculateDirectLighting(float3 hitPoint, float3 normal)
+{
+    float3 centerLightDir = -normalize(lightPosition - hitPoint);
     float factor = dot(normal, centerLightDir);
     float lightIntensity = max(0.0f, factor);
-    surfaceColor *= lightIntensity;
+    return lightIntensity;
+}
 
-    //Reflect a new ray
+void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
+{
     float3 viewDir = normalize(WorldRayDirection());
     float3 reflectionDirection = normalize(reflect(viewDir, normal));
-    RayDesc reflectedRay;
-    reflectedRay.Origin = hitWorldPosition + reflectionDirection * 0.001f; // Offset to avoid self-intersection
-    reflectedRay.Direction = reflectionDirection;
-    reflectedRay.TMin = 0.001f;
-    reflectedRay.TMax = 1000.0f;
-    HitInfo reflectedPayload;
-    reflectedPayload.color = float4(0, 0, 0, 0);
-    reflectedPayload.bounceCount = payload.bounceCount + 1;
-    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, reflectedRay, reflectedPayload);
+    RayDesc ray;
+    ray.Origin = hitPoint + reflectionDirection * 0.001f; // Offset to avoid self-intersection
+    ray.Direction = reflectionDirection;
+    ray.TMin = 0.001f;
+    ray.TMax = 1000.0f;
+    payload.bounceCount = payload.bounceCount + 1;
+    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
+}
+
+[shader("closesthit")]
+void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
+{
+    Material material = materials[0];
+    float3 surfaceColor = material.albedo * payload.color; //Is multiplying with payload.color correct to do here?
+    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 barycentrics = float3(attrib.barycentrics.x, attrib.barycentrics.y, 1.0f - attrib.barycentrics.x - attrib.barycentrics.y);
+    
+    uint MAX_BOUNCE_COUNT = 1;
+    if (payload.bounceCount > MAX_BOUNCE_COUNT)
+    {
+        //payload.color = surfaceColor;
+        return;
+    }
+
+    float3 normal = CalculateInterpolatedNormal(barycentrics);
+    float directLightIntensity = surfaceColor * CalculateDirectLighting(hitWorldPosition, normal);
+    ReflectRay(hitWorldPosition, normal, payload);
 
     float reflectivity = InstanceID() == 0 ? 0.5f : 0.0f;
-    payload.color = lerp(surfaceColor, reflectedPayload.color, reflectivity);
+    payload.color = surfaceColor * (payload.color + directLightIntensity) ;//lerp(surfaceColor, reflectedPayload.color, reflectivity) * directLightIntensity;
+
+    /*
+    if (payload.depth < MAX_BOUNCES)
+    {
+        RayPayload newPayload;
+        newPayload.color = float3(0, 0, 0);
+        newPayload.bounceCount = payload.bounceCount + 1;
+
+        RayDesc newRay;
+        newRay.Origin = hit.position + hit.normal * 0.001;
+        newRay.Direction = normalize(reflectDir);
+        newRay.TMin = 0.001;
+        newRay.TMax = 1000.0;
+
+        TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 1, 0, newRay, newPayload);
+
+        indirectLight = newPayload.color;
+    }
+
+    // Combine lighting contributions
+    payload.color = hit.albedo * (directLight + indirectLight);
+    */
 }
 
 // #DXR Extra: Per-Instance Data
