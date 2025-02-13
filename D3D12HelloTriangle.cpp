@@ -666,7 +666,7 @@ void D3D12HelloTriangle::WaitForPreviousFrame()
         ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
-
+    
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
@@ -844,7 +844,7 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
     //Add the external data needed for the shader program
     rsg.AddHeapRangesParameter({ {0 /*u0*/, 1 /*1 descriptor*/, 0 /*use the implicit register space 0*/, D3D12_DESCRIPTOR_RANGE_TYPE_UAV /*UAV representing the output buffer*/, 0 /*heap slot where the UAV is defined*/},
                                  {0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*TLAS*/, 1},
-                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2} });
+                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2}});
 
     return rsg.Generate(m_device.Get(), true);
 }
@@ -956,10 +956,13 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // ie. the data exchanged between shaders, such as the HitInfo structure in the HLSL code.
     // It is important to keep this value as low as possible as a too high value
     // would result in unnecessary memory consumption and cache trashing.
-    const UINT HLSL_UINT_SIZE_IN_BYTES = 4;
-    const UINT HLSL_FLOAT2_SIZE_IN_BYTES = 8;
-    const UINT HLSL_FLOAT4_SIZE_IN_BYTES = 16;
-    pipeline.SetMaxPayloadSize(HLSL_UINT_SIZE_IN_BYTES + HLSL_FLOAT4_SIZE_IN_BYTES);
+    const UINT HLSL_UINT_SIZE_IN_BYTES   = 4;
+    const UINT HLSL_BOOL_SIZE_IN_BYTES = 4;
+    const UINT HLSL_FLOAT_SIZE_IN_BYTES  = 4;
+    const UINT HLSL_FLOAT2_SIZE_IN_BYTES = 2 * HLSL_FLOAT_SIZE_IN_BYTES;
+    const UINT HLSL_FLOAT3_SIZE_IN_BYTES = 3 * HLSL_FLOAT_SIZE_IN_BYTES;
+    const UINT HLSL_FLOAT4_SIZE_IN_BYTES = 4 * HLSL_FLOAT_SIZE_IN_BYTES;
+    pipeline.SetMaxPayloadSize(HLSL_BOOL_SIZE_IN_BYTES + 4 * HLSL_FLOAT3_SIZE_IN_BYTES);
 
     // Upon hitting a surface, DXR can provide several attributes to the hit.
     // We just use the barycentric coordinates defined by the weights u,v
@@ -972,7 +975,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point).
     // Note that this recursion depth should be kept to a minimum for best performance.
     // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(8);
+    pipeline.SetMaxRecursionDepth(16);
 
     //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
     //so that later we can access the shader pointers by name.
@@ -1166,7 +1169,7 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
     // space
     const glm::mat4& mat = nv_helpers_dx12::CameraManip.getMatrix();
     memcpy(&matrices[0].r->m128_f32[0], glm::value_ptr(mat), 16 * sizeof(float));
-
+    
     float fovAngleY_degrees = 45.0f;
     float fovAngleY = fovAngleY_degrees * XM_PI / 180.0f; //Convert fov angle degrees to radians
     matrices[1] = XMMatrixPerspectiveFovRH(fovAngleY, m_aspectRatio, 0.1f, 1000.0f);

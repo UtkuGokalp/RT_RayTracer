@@ -5,14 +5,9 @@
 // D3D12_RAYTRACING_SHADER_CONFIG pipeline subobjet.
 struct HitInfo
 {
-    uint bounceCount;
+    bool didHit;
     float3 color;
+    float3 hitWorldPoint;
+    float3 hitWorldNormal;
+    float3 rayWorldDirection;
 };
-
-// Attributes output by the DXR when hitting a surface,
-// here the barycentric coordinates
-/*struct Attributes
-{
-    float2 bary;
-};
-*/

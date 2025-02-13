@@ -7,4 +7,6 @@ void Miss(inout HitInfo payload : SV_RayPayload)
     float2 dims = float2(DispatchRaysDimensions().xy);
     float ramp = launchIndex.y / dims.y;
     payload.color = float3(0.0f, 0.2f, 0.7f - 0.3f * ramp);
+    payload.didHit = false;
+    payload.rayWorldDirection = WorldRayDirection();
 }

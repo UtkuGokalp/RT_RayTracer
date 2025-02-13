@@ -70,7 +70,7 @@ float3 ComputeFaceNormal(float3 vertex0, float3 vertex1, float3 vertex2)
     return normal;
 }
 
-float3 CalculateInterpolatedNormal(float3 barycentrics)
+float3 CalculateInterpolatedWorldNormal(float3 barycentrics)
 {
     //Interpolate vertex normals with barycentric coordinates
     uint vertId = 3 * PrimitiveIndex();
@@ -95,13 +95,12 @@ float CalculateDirectLighting(float3 hitPoint, float3 normal)
 void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
 {
     float3 viewDir = normalize(WorldRayDirection());
-    float3 reflectionDirection = normalize(reflect(viewDir, normal));
+    float3 reflectionDirection = normalize(reflect(viewDir, normal)); // RandomHemisphereDirection(normal, seed);
     RayDesc ray;
     ray.Origin = hitPoint + reflectionDirection * 0.001f; // Offset to avoid self-intersection
     ray.Direction = reflectionDirection;
     ray.TMin = 0.001f;
     ray.TMax = 1000.0f;
-    payload.bounceCount = payload.bounceCount + 1;
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
 }
 
@@ -109,45 +108,16 @@ void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
 void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
 {
     Material material = materials[0];
-    float3 surfaceColor = material.albedo * payload.color; //Is multiplying with payload.color correct to do here?
+    float3 surfaceColor = material.albedo * payload.color;
     float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
     float3 barycentrics = float3(attrib.barycentrics.x, attrib.barycentrics.y, 1.0f - attrib.barycentrics.x - attrib.barycentrics.y);
+    float3 normal = CalculateInterpolatedWorldNormal(barycentrics);
+    float lightIntensity = CalculateDirectLighting(hitWorldPosition, normal);
     
-    uint MAX_BOUNCE_COUNT = 1;
-    if (payload.bounceCount > MAX_BOUNCE_COUNT)
-    {
-        //payload.color = surfaceColor;
-        return;
-    }
-
-    float3 normal = CalculateInterpolatedNormal(barycentrics);
-    float directLightIntensity = surfaceColor * CalculateDirectLighting(hitWorldPosition, normal);
-    ReflectRay(hitWorldPosition, normal, payload);
-
-    float reflectivity = InstanceID() == 0 ? 0.5f : 0.0f;
-    payload.color = surfaceColor * (payload.color + directLightIntensity) ;//lerp(surfaceColor, reflectedPayload.color, reflectivity) * directLightIntensity;
-
-    /*
-    if (payload.depth < MAX_BOUNCES)
-    {
-        RayPayload newPayload;
-        newPayload.color = float3(0, 0, 0);
-        newPayload.bounceCount = payload.bounceCount + 1;
-
-        RayDesc newRay;
-        newRay.Origin = hit.position + hit.normal * 0.001;
-        newRay.Direction = normalize(reflectDir);
-        newRay.TMin = 0.001;
-        newRay.TMax = 1000.0;
-
-        TraceRay(SceneBVH, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 1, 0, newRay, newPayload);
-
-        indirectLight = newPayload.color;
-    }
-
-    // Combine lighting contributions
-    payload.color = hit.albedo * (directLight + indirectLight);
-    */
+    payload.rayWorldDirection = WorldRayDirection();
+    payload.hitWorldNormal = normal;
+    payload.hitWorldPoint = hitWorldPosition;
+    payload.color = surfaceColor * lightIntensity;
 }
 
 // #DXR Extra: Per-Instance Data
@@ -228,4 +198,7 @@ void PlaneClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttribute
     //TODO: Uncomment the shadowFactor multiplication for shadows (its issue is probably because of the scaling of the platform, try changing the vertices instead of scaling the model)
     float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity; //* shadowFactor;
     payload.color = platformColor;
+    payload.hitWorldPoint = hitWorldPosition;
+    payload.hitWorldNormal = normal;
+    payload.rayWorldDirection = WorldRayDirection();
 }
