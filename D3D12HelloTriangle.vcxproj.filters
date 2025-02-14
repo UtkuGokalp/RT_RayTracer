@@ -368,5 +368,6 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="libs\NRD.lib" />
+    <Library Include="libs\NRD.lib" />
   </ItemGroup>
 </Project>
