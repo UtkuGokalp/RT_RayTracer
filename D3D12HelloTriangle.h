@@ -22,8 +22,10 @@
 #include "nv_helpers_dx12/ShaderBindingTableGenerator.h"
 #include "UIConstructor.h"
 #include "OBJ_FileManager.h"
+#include "chrono"
 
 using namespace DirectX;
+using namespace std::chrono;
 
 // Note that while ComPtr is used to manage the lifetime of resources on the CPU,
 // it has no understanding of the lifetime of resources on the GPU. Apps must account
@@ -289,4 +291,12 @@ private:
 	ComPtr<ID3D12Resource> materialsBuffer;
 	void CreateMaterialsBuffer();
 	void UpdateMaterialsBuffer();
+
+	//Denoising
+	void DenoiseOutputImage();
+
+	//Frame time measurement
+	high_resolution_clock::time_point frameStart;
+	high_resolution_clock::time_point frameEnd;
+	float frameTime; //Frame time in milliseconds
 };

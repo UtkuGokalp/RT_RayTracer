@@ -13,9 +13,11 @@ public:
     std::array<float, 3> GetLightColor();
     void SetRenderingMode(bool usingRaytracing);
     float GetLightIntensity();
+    void SetFrameTime(float frameTime);
 private:
     bool demoUIShown;
     float lightColor[3];
     float lightIntensity = 0.5f;
     bool isUsingRaytracing;
+    float frameTime;
 };

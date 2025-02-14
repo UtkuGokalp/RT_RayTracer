@@ -195,6 +195,9 @@
     <ClInclude Include="UIConstructor.h" />
     <ClInclude Include="OBJ_Loader.h" />
     <ClInclude Include="OBJ_FileManager.h" />
+    <ClInclude Include="NRDInclude\NRD.h" />
+    <ClInclude Include="NRDInclude\NRDDescs.h" />
+    <ClInclude Include="NRDInclude\NRDSettings.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -362,5 +365,8 @@
   <ItemGroup>
     <Object Include="teapot.obj" />
     <Object Include="teapot_with_normals.obj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="libs\NRD.lib" />
   </ItemGroup>
 </Project>

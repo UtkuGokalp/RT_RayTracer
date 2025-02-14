@@ -18,6 +18,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "manipulator.h"
 #include "windowsx.h"
+#include "NRD.h"
 
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
     DXSample(width, height, name),
@@ -446,6 +447,7 @@ void D3D12HelloTriangle::LoadAssets()
 // Update frame-based values. This method is called before each render.
 void D3D12HelloTriangle::OnUpdate()
 {
+    frameStart = high_resolution_clock::now();
     UpdateMaterialsBuffer();
     // #DXR Extra: Perspective Camera
     UpdateCameraBuffer();
@@ -468,6 +470,8 @@ void D3D12HelloTriangle::OnRender()
     ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
+    DenoiseOutputImage();
+
     // Present the frame (first argument 1 for vsync enabled, 0 for vsync disabled).
     HRESULT result = m_swapChain->Present(1, 0);
 
@@ -480,6 +484,12 @@ void D3D12HelloTriangle::OnRender()
     }
 
     WaitForPreviousFrame();
+
+    //Calculate how long the frame took
+    frameEnd = high_resolution_clock::now();
+    milliseconds duration = duration_cast<milliseconds>(frameEnd - frameStart);
+    frameTime = (float)duration.count();
+    uiConstructor.SetFrameTime(frameTime);
 }
 
 void D3D12HelloTriangle::OnDestroy()
@@ -1522,4 +1532,30 @@ void D3D12HelloTriangle::UpdateMaterialsBuffer()
     ThrowIfFailed(materialsBuffer->Map(0, nullptr, (void**)&p_gpuData));
     memcpy(p_gpuData, (const void*)materials.data(), bufferSizeInBytes);
     materialsBuffer->Unmap(0, nullptr);
+}
+
+void D3D12HelloTriangle::DenoiseOutputImage()
+{
+    nrd::Instance* nrdInstance;
+    nrd::InstanceCreationDesc nrdCreationDesc{};
+    nrd::DenoiserDesc denoiserDesc{};
+    //denoiserDesc.identifier //???
+    nrd::Denoiser denoiser = nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR;
+    denoiserDesc.denoiser = denoiser;
+    nrdCreationDesc.denoisers = &denoiserDesc;
+    nrdCreationDesc.denoisersNum = 1;
+    nrd::Result denoiserCreationResult = nrd::CreateInstance(nrdCreationDesc, nrdInstance);
+    if (denoiserCreationResult != nrd::Result::SUCCESS)
+    {
+        std::cerr << "Failed to create NRD instance!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    nrd::CommonSettings settings{};
+    settings.isMotionVectorInWorldSpace = false;
+    settings.timeDeltaBetweenFrames = frameTime;
+    settings.frameIndex = m_frameIndex;
+
+    //Input textures
+    nrd::DispatchDesc dispatchDesc{};
 }
