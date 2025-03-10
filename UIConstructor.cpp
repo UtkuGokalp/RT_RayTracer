@@ -9,6 +9,11 @@ UIConstructor::UIConstructor()
     //This initialization is written bc currently the default rendering mode is raytracing.
     //This should be updated from the D3D12HelloTriangle.cpp, OnInit() method.
     isUsingRaytracing = true;
+    albedo[0] = 1.0f;
+    albedo[1] = 1.0f;
+    albedo[2] = 1.0f;
+    roughness = 0.5f;
+    metallic = 0.5f;
 }
 
 void UIConstructor::Construct()
@@ -18,6 +23,18 @@ void UIConstructor::Construct()
     {
         ImGui::ShowDemoWindow();
     }
+
+    char fpsString[65] = { 0 };
+    _snprintf_s(fpsString, 64, "%.3f ms, %.2f FPS", frameTime, 1.0f / (frameTime * 1e-3)); //Frame time is in ms so multiply it with 10^-3 in the denominator
+    ImGui::Begin("Performance");
+    ImGui::Text(fpsString);
+    ImGui::End();
+
+    ImGui::Begin("Materials");
+    ImGui::ColorPicker3("Albedo", albedo);
+    ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
+    ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f);
+    ImGui::End();
 
     //Rendering mode display
     ImGui::Begin("Rendering Mode");
@@ -65,4 +82,24 @@ std::array<float, 3> UIConstructor::GetLightColor()
 void UIConstructor::SetRenderingMode(bool usingRaytracing)
 {
     isUsingRaytracing = usingRaytracing;
+}
+
+void UIConstructor::SetFrameTime(float frameTime)
+{
+    this->frameTime = frameTime;
+}
+
+XMFLOAT3 UIConstructor::GetAlbedo()
+{
+    return XMFLOAT3(albedo[0], albedo[1], albedo[2]);
+}
+
+float UIConstructor::GetRoughness()
+{
+    return roughness;
+}
+
+float UIConstructor::GetMetallic()
+{
+    return metallic;
 }

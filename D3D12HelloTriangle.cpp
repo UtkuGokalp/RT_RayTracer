@@ -26,7 +26,8 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
     m_scissorRect(0, 0, static_cast<LONG>(width), static_cast<LONG>(height)),
     m_rtvDescriptorSize(0),
     uiConstructor(UIConstructor()),
-    renderUI(false)
+    renderUI(false),
+    materials({ Material() })
 {
 }
 
@@ -58,6 +59,8 @@ void D3D12HelloTriangle::OnInit()
     // #DXR Extra: Perspective Camera
     // Create a buffer to store the modelview and perspective camera matrices
     CreateCameraBuffer();
+    //Create materials buffer
+    CreateMaterialsBuffer();
     // Create the buffer containing the raytracing result (always output in a
     // UAV), and create the heap referencing the resources used by the raytracing,
     // such as the acceleration structure
@@ -184,6 +187,41 @@ void D3D12HelloTriangle::LoadPipeline()
     CreateDepthBuffer();
 }
 
+// Compute face normals and distribute them as vertex normals
+void D3D12HelloTriangle::ComputeVertexNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+{
+    // Step 1: Initialize vertex normals to zero
+    std::vector<XMFLOAT3> tempNormals(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
+
+    // Step 2: Iterate through each triangle and compute the face normal
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        uint32_t i0 = indices[i];
+        uint32_t i1 = indices[i + 1];
+        uint32_t i2 = indices[i + 2];
+
+        XMVECTOR v0 = XMLoadFloat3(&vertices[i0].position);
+        XMVECTOR v1 = XMLoadFloat3(&vertices[i1].position);
+        XMVECTOR v2 = XMLoadFloat3(&vertices[i2].position);
+
+        // Compute the face normal
+        XMVECTOR edge1 = v1 - v0;
+        XMVECTOR edge2 = v2 - v0;
+        XMVECTOR normal = XMVector3Normalize(XMVector3Cross(edge1, edge2));
+
+        // Accumulate the normal for each vertex of the triangle
+        XMStoreFloat3(&tempNormals[i0], XMVectorAdd(XMLoadFloat3(&tempNormals[i0]), normal));
+        XMStoreFloat3(&tempNormals[i1], XMVectorAdd(XMLoadFloat3(&tempNormals[i1]), normal));
+        XMStoreFloat3(&tempNormals[i2], XMVectorAdd(XMLoadFloat3(&tempNormals[i2]), normal));
+    }
+
+    // Step 3: Normalize all vertex normals
+    for (size_t i = 0; i < vertices.size(); i++) {
+        XMVECTOR normal = XMLoadFloat3(&tempNormals[i]);
+        normal = XMVector3Normalize(normal);
+        XMStoreFloat3(&vertices[i].normal, -normal);
+    }
+}
+
 // Load the sample assets.
 void D3D12HelloTriangle::LoadAssets()
 {
@@ -273,19 +311,61 @@ void D3D12HelloTriangle::LoadAssets()
         std::vector<UINT> indices;
         
         {
-            OBJFileManager ofm = OBJFileManager();
-            std::vector<objl::Vertex> modelFileVertices;
-
-            std::string path = "teapot.obj";
-            ofm.LoadObjFile(path, modelFileVertices, indices);
-            
-            //Convert from objl::Vertex to Vertex struct to complete the load.
-            for (auto& vertex : modelFileVertices)
+            bool createCube = false; //Set this to true to make a cube for debugging purposes.
+            if (createCube)
             {
-                Vertex v;
-                v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
-                v.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-                vertices.push_back(v);
+                //Box vertices for debugging.
+                indices = {
+                    //Top
+                    2, 7, 6,
+                    2, 3, 7,
+                    //Bottom
+                    0, 4, 5,
+                    0, 5, 1,
+                    //Left
+                    0, 6, 2,
+                    0, 4, 6,
+                    //Right
+                    1, 3, 7,
+                    1, 7, 5,
+                    //Front
+                    0, 2, 3,
+                    0, 3, 1,
+                    //Back
+                    4, 7, 6,
+                    4, 5, 7
+                };
+
+                vertices =
+                {
+                    Vertex({-1, -1,  1}),//0
+                    Vertex({ 1, -1,  1}),//1
+                    Vertex({-1,  1,  1}),//2
+                    Vertex({ 1,  1,  1}),//3
+                    Vertex({-1, -1, -1}),//4
+                    Vertex({ 1, -1, -1}),//5
+                    Vertex({-1,  1, -1}),//6
+                    Vertex({ 1,  1, -1})//7
+                };
+            }
+            else
+            {
+                OBJFileManager ofm = OBJFileManager();
+                std::vector<objl::Vertex> modelFileVertices;
+
+                std::string path = "teapot.obj";
+                ofm.LoadObjFile(path, modelFileVertices, indices);
+
+                //Convert from objl::Vertex to Vertex struct to complete the load.
+                for (auto& vertex : modelFileVertices)
+                {
+                    Vertex v;
+                    v.position = XMFLOAT3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+                    //v.normal = XMFLOAT3(vertex.Normal.X, vertex.Normal.Y, vertex.Normal.Z);
+                    vertices.push_back(v);
+                }
+
+                ComputeVertexNormals(vertices, indices);
             }
         }
 
@@ -366,6 +446,11 @@ void D3D12HelloTriangle::LoadAssets()
 // Update frame-based values. This method is called before each render.
 void D3D12HelloTriangle::OnUpdate()
 {
+    frameStart = high_resolution_clock::now();
+    materials[0].albedo = uiConstructor.GetAlbedo();
+    materials[0].roughness = uiConstructor.GetRoughness();
+    materials[0].metallic = uiConstructor.GetMetallic();
+    UpdateMaterialsBuffer();
     // #DXR Extra: Perspective Camera
     UpdateCameraBuffer();
     // #DXR Extra - Refitting
@@ -387,6 +472,8 @@ void D3D12HelloTriangle::OnRender()
     ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
+    //TODO: Denoise the output image here
+    // 
     // Present the frame (first argument 1 for vsync enabled, 0 for vsync disabled).
     HRESULT result = m_swapChain->Present(1, 0);
 
@@ -399,6 +486,12 @@ void D3D12HelloTriangle::OnRender()
     }
 
     WaitForPreviousFrame();
+
+    //Calculate how long the frame took
+    frameEnd = high_resolution_clock::now();
+    milliseconds duration = duration_cast<milliseconds>(frameEnd - frameStart);
+    frameTime = (float)duration.count();
+    uiConstructor.SetFrameTime(frameTime);
 }
 
 void D3D12HelloTriangle::OnDestroy()
@@ -585,7 +678,7 @@ void D3D12HelloTriangle::WaitForPreviousFrame()
         ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
-
+    
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
@@ -649,7 +742,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
                 0);
         }
     }
-
+    
     //Step two: Computing the sizes for the buffers
     // The AS build requires some scratch space to store temporary information.
     // The amount of scratch memory is dependent on the scene complexity.
@@ -675,7 +768,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
     return buffers;
 }
 
-void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>>& instances, bool updateOnly)
+void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<TLASParams>& instances, bool updateOnly)
 {
     if (!updateOnly)
     {
@@ -687,7 +780,8 @@ void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<std::tuple<ComPtr<ID
         //Step one: Gather the instances
         for (size_t i = 0; i < instances.size(); i++)
         {
-            m_topLevelASGenerator.AddInstance(std::get<0>(instances[i]).Get(), std::get<1>(instances[i]), (UINT)i, std::get<2>(instances[i]));
+            const TLASParams& instance = instances[i];
+            m_topLevelASGenerator.AddInstance(instance.blas.Get(), instance.transformMatrix, (UINT)i, instance.hitGroupIndex);
         }
 
         //Step two: Compute the memory requirements
@@ -726,13 +820,15 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
-    m_instances = { { modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0 },
-                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0 },
-                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0 },
-                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0 },
-                    { modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0 },
-                    { planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.15f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2 },
-    };
+    m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(planeBottomLevelBuffers.pResult, XMMatrixIdentity(), 2, 0),
+                  };
+    
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -759,7 +855,7 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
     //Add the external data needed for the shader program
     rsg.AddHeapRangesParameter({ {0 /*u0*/, 1 /*1 descriptor*/, 0 /*use the implicit register space 0*/, D3D12_DESCRIPTOR_RANGE_TYPE_UAV /*UAV representing the output buffer*/, 0 /*heap slot where the UAV is defined*/},
                                  {0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*TLAS*/, 1},
-                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2} });
+                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2}});
 
     return rsg.Generate(m_device.Get(), true);
 }
@@ -769,7 +865,14 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
     nv_helpers_dx12::RootSignatureGenerator rsg;
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 0 /*t0*/); // vertices and colors
     rsg.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV, 1 /*t1*/); // indices
-
+    /*
+    * AddHeapRangeParameter() function parameters are defined as follows:
+        UINT,                        //BaseShaderRegister,
+        UINT,                        //NumDescriptors
+        UINT,                        //RegisterSpace
+        D3D12_DESCRIPTOR_RANGE_TYPE, //RangeType
+        UINT                         //OffsetInDescriptorsFromTableStart
+    */
     rsg.AddHeapRangesParameter(
         {
             // #DXR Extra - Another ray type
@@ -784,7 +887,8 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateHitSignature()
             // HLSL as register(b0)
             { 0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Scene data*/, 2 },
             // # DXR Extra - Simple Lighting
-            { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3 }
+            { 3 /*t3*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Per-instance data*/, 3 },
+            { 4 /*t4*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Material array*/, 4 }
         });
     return rsg.Generate(m_device.Get(), true);
 }
@@ -803,7 +907,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // characteristics in a single structure used by DXR to invoke the shaders and
     // manage temporary memory during raytracing
     nv_helpers_dx12::RayTracingPipelineGenerator pipeline(m_device.Get());
-
+    
     //First we compile the HLSL shaders to DXIL so that they can be used in GPUs.
     //The raytracing pipeline contains all the shaders that may be executed during the raytracing process.
     //The codes are separated semantically to raygen, miss and hit for clarity. Any code layout can be used.
@@ -818,6 +922,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // In a way similar to DLLs, each library is associated with a number of
     // exported symbols. This has to be done explicitly in the lines below. Note that a single library
     // can contain an arbitrary number of symbols, whose semantic is given in HLSL using the [shader("xxx")] syntax
+    //It is important to note that the symbol names MUST be unique!
     pipeline.AddLibrary(m_rayGenLibrary.Get(), { L"RayGen" });
     pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
     //L"PlaneClosestHit" is from #DXR Extra: Per-Instance Data
@@ -862,20 +967,26 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // ie. the data exchanged between shaders, such as the HitInfo structure in the HLSL code.
     // It is important to keep this value as low as possible as a too high value
     // would result in unnecessary memory consumption and cache trashing.
-    pipeline.SetMaxPayloadSize(4 * sizeof(float)); // RGB + distance (float4 type in HLSL)
+    const UINT HLSL_UINT_SIZE_IN_BYTES   = 4;
+    const UINT HLSL_BOOL_SIZE_IN_BYTES = 4;
+    const UINT HLSL_FLOAT_SIZE_IN_BYTES  = 4;
+    const UINT HLSL_FLOAT2_SIZE_IN_BYTES = 2 * HLSL_FLOAT_SIZE_IN_BYTES;
+    const UINT HLSL_FLOAT3_SIZE_IN_BYTES = 3 * HLSL_FLOAT_SIZE_IN_BYTES;
+    const UINT HLSL_FLOAT4_SIZE_IN_BYTES = 4 * HLSL_FLOAT_SIZE_IN_BYTES;
+    pipeline.SetMaxPayloadSize(HLSL_FLOAT3_SIZE_IN_BYTES);
 
     // Upon hitting a surface, DXR can provide several attributes to the hit.
     // We just use the barycentric coordinates defined by the weights u,v
     // of the last two vertices of the triangle. The actual barycentrics can
     // be obtained using float3 barycentrics = float3(1.f-u-v, u, v);
-    pipeline.SetMaxAttributeSize(2 * sizeof(float)); // barycentric coordinates (float2 type in HLSL)
+    pipeline.SetMaxAttributeSize(HLSL_FLOAT2_SIZE_IN_BYTES); // barycentric coordinates
 
     // The raytracing process can shoot rays from existing hit points, resulting
     // in nested TraceRay calls. Our code includes shadow rays, which means
     // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point).
     // Note that this recursion depth should be kept to a minimum for best performance.
     // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(4);
+    pipeline.SetMaxRecursionDepth(16);
 
     //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
     //so that later we can access the shader pointers by name.
@@ -905,8 +1016,8 @@ void D3D12HelloTriangle::CreateRaytracingOutputBuffer()
 //Create the main heap used by shaders, which allows access to the raytracing output and the TLAS
 void D3D12HelloTriangle::CreateShaderResourceHeap()
 {
-    //4 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting
-    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 4, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    //5 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting, 1 for the materials
+    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 5, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     //Get a handle to te heap memory on the CPU side so that descriptors can be directly written to
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle_cpu = m_srvUavHeap->GetCPUDescriptorHandleForHeapStart();
@@ -947,6 +1058,17 @@ void D3D12HelloTriangle::CreateShaderResourceHeap()
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     // Write the per-instance properties buffer view in the heap
     m_device->CreateShaderResourceView(m_instancePropertiesBuffer.Get(), &srvDesc, srvHandle_cpu);
+
+    //Materials heap slot
+    srvHandle_cpu.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.NumElements = (UINT)materials.size();
+    srvDesc.Buffer.StructureByteStride = sizeof(Material);
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    m_device->CreateShaderResourceView(materialsBuffer.Get(), &srvDesc, srvHandle_cpu);
 }
 
 void D3D12HelloTriangle::CreateShaderBindingTable()
@@ -976,7 +1098,8 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
                                            (void*)(heapPointer),
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
                                            (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
-        });
+                                           (void*)materialsBuffer->GetGPUVirtualAddress(),
+                                         });
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
@@ -987,6 +1110,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
             (void*)m_globalConstantBuffer->GetGPUVirtualAddress(),
             heapPointer,
             //nullptr, //Why is this even here??
+            //TODO: Is is necessary to put the materialsBuffer here???
         });
 
     // Compute the size of the SBT given the number of shaders and their parameters
@@ -1056,7 +1180,7 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
     // space
     const glm::mat4& mat = nv_helpers_dx12::CameraManip.getMatrix();
     memcpy(&matrices[0].r->m128_f32[0], glm::value_ptr(mat), 16 * sizeof(float));
-
+    
     float fovAngleY_degrees = 45.0f;
     float fovAngleY = fovAngleY_degrees * XM_PI / 180.0f; //Convert fov angle degrees to radians
     matrices[1] = XMMatrixPerspectiveFovRH(fovAngleY, m_aspectRatio, 0.1f, 1000.0f);
@@ -1091,9 +1215,9 @@ void D3D12HelloTriangle::UpdateInstancePropertiesBuffer()
     ThrowIfFailed(m_instancePropertiesBuffer->Map(0, &readRange, (void**)&current));
     for (const auto& instance : m_instances)
     {
-        current->objectToWorld = std::get<1>(instance); //Set the matrix to the matrix set for instance.
+        current->objectToWorld = instance.transformMatrix; //Set the matrix to the matrix set for instance.
         // #DXR Extra - Simple Lighting
-        XMMATRIX upper3x3 = std::get<1>(instance);
+        XMMATRIX upper3x3 = instance.transformMatrix;
         // Remove the translation and lower vector of the matrix
         upper3x3.r[0].m128_f32[3] = 0.f;
         upper3x3.r[1].m128_f32[3] = 0.f;
@@ -1143,13 +1267,14 @@ void D3D12HelloTriangle::OnMouseMove(UINT8 wParam, UINT32 lParam)
 void D3D12HelloTriangle::CreatePlaneVB()
 {
     // Define the geometry for a plane.
+    float planeScale = 40.0f;
     Vertex planeVertices[] = {
-        {{-1.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 0
-        {{-1.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
-        {{01.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
-        {{01.5f, -.8f, 01.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 2
-        {{-1.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // 1
-        {{01.5f, -.8f, -1.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}  // 4
+        {{-planeScale, -1.0f, +planeScale}}, // 0
+        {{+planeScale, -1.0f, +planeScale}}, // 2
+        {{-planeScale, -1.0f, -planeScale}}, // 1
+        {{-planeScale, -1.0f, -planeScale}}, // 1
+        {{+planeScale, -1.0f, +planeScale}}, // 2
+        {{+planeScale, -1.0f, -planeScale}}  // 4
     };
     const UINT planeBufferSize = sizeof(planeVertices);
 
@@ -1393,4 +1518,20 @@ void D3D12HelloTriangle::InitializeImGuiContext(bool darkTheme)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
+}
+
+void D3D12HelloTriangle::CreateMaterialsBuffer()
+{
+    uint64_t bufferSizeInBytes = sizeof(Material) * materials.size();
+    materialsBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), bufferSizeInBytes, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+    UpdateMaterialsBuffer();
+}
+
+void D3D12HelloTriangle::UpdateMaterialsBuffer()
+{
+    uint64_t bufferSizeInBytes = sizeof(Material) * materials.size();
+    uint8_t* p_gpuData;
+    ThrowIfFailed(materialsBuffer->Map(0, nullptr, (void**)&p_gpuData));
+    memcpy(p_gpuData, (const void*)materials.data(), bufferSizeInBytes);
+    materialsBuffer->Unmap(0, nullptr);
 }

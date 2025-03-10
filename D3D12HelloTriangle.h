@@ -22,8 +22,10 @@
 #include "nv_helpers_dx12/ShaderBindingTableGenerator.h"
 #include "UIConstructor.h"
 #include "OBJ_FileManager.h"
+#include "chrono"
 
 using namespace DirectX;
+using namespace std::chrono;
 
 // Note that while ComPtr is used to manage the lifetime of resources on the CPU,
 // it has no understanding of the lifetime of resources on the GPU. Apps must account
@@ -45,6 +47,11 @@ public:
 private:
 	static const UINT FrameCount = 2;
 
+	/*
+	//The version of the Vertex struct below is used for creating Menger Fractal geometry.
+	//For implementing a material system, this was disabled however the Menger Fractal creation code
+	//isn't removed from the other parts of the codebase yet. So if those parts of the codebase are ever used,
+	//the structure below for should be used for vertices. Currently those parts of the codebase are not used.
 	struct Vertex
 	{
 		Vertex()
@@ -58,6 +65,31 @@ private:
 		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
 		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z), color(color) {}
 		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position), color(color) {}
+	};*/
+
+	struct Vertex
+	{
+		XMFLOAT3 position;
+		XMFLOAT3 normal;
+		Vertex(XMFLOAT3 position = XMFLOAT3(0.0f, 0.0f, 0.0f)) : position(position) { }
+		//The constructors below are unused. They are only for providing compatibility
+		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
+		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z) {}
+		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position) {}
+	};
+	void ComputeVertexNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+
+	struct Material
+	{
+		XMFLOAT3 albedo;
+		float roughness;
+		float metallic;
+
+		Material(XMFLOAT3 albedo = XMFLOAT3(1.0f, 1.0f, 1.0f), float roughness = 0.5f, float metallic  = 1.0f)
+			: albedo(albedo), roughness(roughness), metallic(metallic)
+		{
+
+		}
 	};
 
 	// Pipeline objects.
@@ -105,11 +137,25 @@ private:
 		ComPtr<ID3D12Resource> pInstanceDesc; // Hold the matrices of the instances
 	};
 
+	struct TLASParams
+	{
+		//std::tuple < ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT
+		ComPtr<ID3D12Resource> blas;
+		DirectX::XMMATRIX transformMatrix;
+		UINT hitGroupIndex;
+		UINT materialIndex;
+
+		TLASParams(const ComPtr<ID3D12Resource>& blas, const DirectX::XMMATRIX& transformMatrix, const UINT& hitGroupIndex, const UINT& materialIndex)
+			: blas(blas), transformMatrix(transformMatrix), hitGroupIndex(hitGroupIndex), materialIndex(materialIndex)
+		{
+		}
+	};
+
 	ComPtr<ID3D12Resource> m_bottomLevelAS; // Storage for the bottom Level AS
 
 	nv_helpers_dx12::TopLevelASGenerator m_topLevelASGenerator;
 	AccelerationStructureBuffers m_topLevelASBuffers;
-	std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>> m_instances;
+	std::vector<TLASParams> m_instances;
 
 	/// <summary>
 	/// Create the acceleration structure of an instance
@@ -121,9 +167,9 @@ private:
 	/// <summary>
 	/// Create the main acceleration structure that holds all instances of the scene
 	/// </summary>
-	/// <param name="instances">Tuple of BLAS and transform along with the hit group index indicating which hit shader should be used to render the geonmetry</param>
+	/// <param name="instances">Parameters of TLAS</param>
 	/// <param name="updateOnly">Whether to build TLAS from scratch or just update the existing one</param>
-	void CreateTopLevelAS(const std::vector<std::tuple<ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT>> &instances, bool updateOnly = false);
+	void CreateTopLevelAS(const std::vector<TLASParams> &instances, bool updateOnly = false);
 
 	/// <summary>
 	/// Create all acceleration structures, bottom and top
@@ -238,4 +284,16 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_imguiFontDescriptorHeap;
 	UIConstructor uiConstructor;
 	bool renderUI;
+
+	//Material system
+	//A default material is added in the constructor. New materials start from index 1 unless the default material is removed.
+	std::vector<Material> materials;
+	ComPtr<ID3D12Resource> materialsBuffer;
+	void CreateMaterialsBuffer();
+	void UpdateMaterialsBuffer();
+
+	//Frame time measurement
+	high_resolution_clock::time_point frameStart;
+	high_resolution_clock::time_point frameEnd;
+	float frameTime; //Frame time in milliseconds
 };
