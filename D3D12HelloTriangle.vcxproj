@@ -58,7 +58,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(ProjectDir)NRDInclude;$(ProjectDir)ImGui;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)ImGui;$(ProjectDir)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
@@ -127,6 +127,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DXRHelper.h" />
+    <ClInclude Include="ffx_api\dx12\ffx_api_dx12.h" />
+    <ClInclude Include="ffx_api\dx12\ffx_api_dx12.hpp" />
+    <ClInclude Include="ffx_api\ffx_api.h" />
+    <ClInclude Include="ffx_api\ffx_api.hpp" />
+    <ClInclude Include="ffx_api\ffx_api_loader.h" />
+    <ClInclude Include="ffx_api\ffx_api_types.h" />
+    <ClInclude Include="ffx_api\ffx_framegeneration.h" />
+    <ClInclude Include="ffx_api\ffx_framegeneration.hpp" />
+    <ClInclude Include="ffx_api\ffx_upscale.h" />
+    <ClInclude Include="ffx_api\ffx_upscale.hpp" />
+    <ClInclude Include="ffx_api\vk\ffx_api_vk.h" />
+    <ClInclude Include="ffx_api\vk\ffx_api_vk.hpp" />
     <ClInclude Include="glm\common.hpp" />
     <ClInclude Include="glm\detail\func_common.hpp" />
     <ClInclude Include="glm\detail\func_exponential.hpp" />
@@ -280,9 +292,7 @@
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="manipulator.h" />
-    <ClInclude Include="NRDInclude\NRD.h" />
-    <ClInclude Include="NRDInclude\NRDDescs.h" />
-    <ClInclude Include="NRDInclude\NRDSettings.h" />
+    <ClInclude Include="NRDInclude\NRI.h" />
     <ClInclude Include="nv_helpers_dx12\BottomLevelASGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\RaytracingPipelineGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\RootSignatureGenerator.h" />
@@ -297,6 +307,26 @@
     <ClInclude Include="DXSample.h" />
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="_NRD_SDK\Include\NRD.h" />
+    <ClInclude Include="_NRD_SDK\Include\NRDDescs.h" />
+    <ClInclude Include="_NRD_SDK\Include\NRDSettings.h" />
+    <ClInclude Include="_NRD_SDK\Integration\NRDIntegration.h" />
+    <ClInclude Include="_NRD_SDK\Integration\NRDIntegration.hpp" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIDeviceCreation.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIHelper.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRILowLatency.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIMeshShader.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIRayTracing.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIResourceAllocator.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIStreamer.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRISwapChain.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIWrapperD3D11.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIWrapperD3D12.h" />
+    <ClInclude Include="_NRI_SDK\Include\Extensions\NRIWrapperVK.h" />
+    <ClInclude Include="_NRI_SDK\Include\NRI.h" />
+    <ClInclude Include="_NRI_SDK\Include\NRIAgilitySDK.h" />
+    <ClInclude Include="_NRI_SDK\Include\NRIDescs.h" />
+    <ClInclude Include="_NRI_SDK\Include\NRIMacro.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glm\detail\dummy.cpp" />
@@ -462,6 +492,9 @@
     <None Include="glm\gtx\vector_angle.inl" />
     <None Include="glm\gtx\vector_query.inl" />
     <None Include="glm\gtx\wrap.inl" />
+    <None Include="_NRD_SDK\Shaders\Include\NRD.hlsli" />
+    <None Include="_NRD_SDK\Shaders\Include\NRDEncoding.hlsli" />
+    <None Include="_NRI_SDK\Include\NRICompatibility.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="glm\CMakeLists.txt" />
@@ -473,10 +506,6 @@
     <Object Include="teapot_with_normals.obj">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </Object>
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="libs\NRD.lib" />
-    <Library Include="libs\NRD.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

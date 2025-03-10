@@ -24,42 +24,135 @@ cbuffer CameraParams : register(b0)
     float4x4 viewInv;
     float4x4 projectionInv;
 }
-
-float3 RandomHemisphereDirection(float3 normal, float3 viewDir, float roughness, uint seed)
+/*
+float3 RandomHemisphereDirection(inout uint seed, float3 normal, float3 origin)
 {
-    // Compute perfect reflection direction
-    float3 perfectReflection = reflect(-viewDir, normal);
-
-    // Generate random numbers using a simple hash function
-    seed = (seed * 1664525u + 1013904223u);
-    float u1 = float(seed & 0xFFFFFF) / 16777216.0; // Random value in [0,1]
-    
-    seed = (seed * 1664525u + 1013904223u);
-    float u2 = float(seed & 0xFFFFFF) / 16777216.0; // Another random value in [0,1]
-
-    // Convert random values to spherical coordinates
-    float theta = acos(pow(1.0 - u1, 1.0 / (1.0 + roughness * roughness))); // Roughness controls spread
-    float phi = 2.0 * 3.1415926535 * u2;
-
-    // Convert spherical to Cartesian coordinates
-    float3 localDir = float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-
-    // Build an orthonormal basis from the normal
-    float3 tangent = normalize(cross(normal, float3(0.0, 1.0, 0.0)));
-    if (abs(normal.y) > 0.99) tangent = normalize(cross(normal, float3(1.0, 0.0, 0.0)));
-    float3 bitangent = cross(normal, tangent);
-
-    // Transform localDir from tangent space to world space
-    float3 randomDir = normalize(localDir.x * tangent + localDir.y * bitangent + localDir.z * normal);
-
-    // Blend between perfect reflection and random hemisphere sample
-    return normalize(lerp(perfectReflection, randomDir, roughness));
+    //Get a random point in a sphere first. This will ensured to be in a hemisphere later.
+    //The code below generated a uniform distribution on a sphere. A normal distribution might be better, although probably not strictly necessary.
+    const float HEMI_RADIUS = 1.0f;
+    float phi = RandomFloatInRange(seed, 0.0f, 2.0f * PI);
+    float costheta = RandomFloatInRange(seed, -1.0f, 1.0f);
+    float u = RandomFloatInRange(seed, 0.0f, 1.0f);
+    float theta = acos(costheta);
+    float r = HEMI_RADIUS * pow(u, 1.0f / 3.0f); //cuberoot of u
+    float x = r * sin(theta) * cos(phi);
+    float y = r * sin(theta) * sin(phi);
+    float z = r * cos(theta);
+    float3 pointInSphere = float3(x, y, z);
+    float3 direction = normalize(pointInSphere - origin);
+    //Ensure that the point is in the hemisphere
+    if (dot(normalize(normal), direction) < 0.0f)
+    {
+        direction = -direction;
+    }
+    return normalize(direction);
 }
 
+float3 TraceRayPath(float3 origin, float3 direction, uint maxBounceCount, float3 initialColor, inout uint seed)
+{
+    //TODO: This function should take the origin and direction of the primary ray and trace it's path including its bounces and other necessary stuff.
+    //It should return the color of the ray at the end of the tracing proces
+
+    float3 incomingLight = float3(0.0f, 0.0f, 0.0f);
+    float3 rayColor = initialColor;
+    for (int i = 0; i < maxBounceCount + 1; i++)
+    {
+        HitInfo hitInfo;
+        hitInfo.didHit = true;
+        CastDefaultRay(SceneBVH, origin, direction, hitInfo);
+        if (hitInfo.didHit)
+        {
+            origin = hitInfo.hitWorldPoint;
+            direction = RandomHemisphereDirection(seed, hitInfo.hitWorldNormal, hitInfo.hitWorldPoint);
+            rayColor *= hitInfo.color;
+            incomingLight += rayColor;
+            
+            //TODO: This piece of code calculates the random reflection direction based on the roughness of the surface. Integrate it when the time comes.
+            float3 randomDirection = RandomHemisphereDirection(seed, samplePayload.hitWorldNormal, rayOrigin);
+            float3 perfectReflectionDirection = reflect(samplePayload.rayWorldDirection, samplePayload.hitWorldNormal);
+            rayDirection = lerp(perfectReflectionDirection, randomDirection, samplePayload.surfaceRoughness);
+            
+        }
+        else
+        {
+            incomingLight = hitInfo.color;
+            break;
+        }
+    }
+    return incomingLight;
+}
+*/
 [shader("raygeneration")]
 void RayGen()
 {
-    const int numSamples = 16; // Number of indirect rays per bounce
+    bool useRayBounces = false; //debug flag
+
+    if (useRayBounces)
+    {
+        /*uint2 pixelCoordinates = DispatchRaysIndex().xy; //DispatchRaysIndex(): Gets the current location within the width, height, and depth obtained with the DispatchRaysDimensions() system value intrinsic.
+        float2 windowDimensions = float2(DispatchRaysDimensions().xy); //DispatchRayDimensions(): The width, height and depth values from the D3D12_DISPATCH_RAYS_DESC structure specified in the originating DispatchRays() call on the CPU side.
+        float2 d = ((pixelCoordinates.xy + 0.5f) / windowDimensions.xy) * 2.0f - 1.0f; //d is the floating point pixel coordinates, normalized on [0, 1] X [0, 1]
+        uint seed = GetPixelSeedForRandomValue();
+
+        //Calculate ray origin and direction for the primary ray
+        float3 rayOrigin, rayDirection;
+        float3 rayOriginRelativeToCamera = float3(0.0f, 0.0f, 0.0f); //Put the ray origin at the camera's position
+        rayOrigin = mul(viewInv, float4(rayOriginRelativeToCamera, 1.0f)).xyz; //Convert the origin from camera space to world space
+        rayDirection = mul(projectionInv, float4(d.x, -d.y, 1.0f, 1.0f)).xyz; //y component is inverted in order to match the image indexing convention of DirectX.
+        rayDirection = mul(viewInv, float4(rayDirection, 0.0f)).xyz;
+        uint raysPerPixel = 1; //TODO: Keep this at one for now and make the ray bounces work properly. Then increase this if necessary
+        uint rayBounceCount = 0;
+
+        for (uint i = 0; i < raysPerPixel; i++)
+        {
+            //TODO: Implement the color contribution of each bounce
+            for (uint j = 0; j < rayBounceCount + 1; j++) //+ 1 so that rayBounceCount = 0 means no bounces, which is more intuitive
+            {
+                HitInfo samplePayload;
+                samplePayload.color = float3(1.0f, 1.0f, 1.0f);
+                samplePayload.didHit = true; //We assume the ray did hit and handle not hitting in the miss shader later
+                //CastDefaultRay(SceneBVH, rayOrigin, rayDirection, payload);
+                totalLight += samplePayload.color;
+
+                if (!samplePayload.didHit)
+                {
+                    //If the ray didn't hit anything, it won't bounce anymore so simply break out of the loop
+                    break;
+                }
+
+                //Payload variables here will already be in the world space, so we don't need to apply transformation to them
+                rayOrigin = samplePayload.hitWorldPoint;
+                
+            }
+        }
+
+        float3 lightColor = float3(1.0f, 1.0f, 1.0f);
+        float3 totalIncomingLight = float3(0.0f, 0.0f, 0.0f);
+        for (int i = 0; i < raysPerPixel; i++)
+        {
+            totalIncomingLight += TraceRayPath(rayOrigin, rayDirection, rayBounceCount, lightColor, seed);
+        }
+        float3 pixelColor = totalIncomingLight / raysPerPixel;
+        gOutput[pixelCoordinates] = float4(pixelColor, 1.0f);*/
+    }
+    else
+    {
+        //This is a debugging code that doesn't implement any ray bouncing and the output is usable for visualizing the scene. It is not intended to be used except for debugging.
+        uint2 pixelCoordinates = DispatchRaysIndex().xy; //DispatchRaysIndex(): Gets the current location within the width, height, and depth obtained with the DispatchRaysDimensions() system value intrinsic.
+        float2 windowDimensions = float2(DispatchRaysDimensions().xy); //DispatchRayDimensions(): The width, height and depth values from the D3D12_DISPATCH_RAYS_DESC structure specified in the originating DispatchRays() call on the CPU side.
+        float2 d = ((pixelCoordinates.xy + 0.5f) / windowDimensions.xy) * 2.0f - 1.0f; //d is the floating point pixel coordinates, normalized on [0, 1] X [0, 1]
+
+        float3 rayOriginRelativeToCamera = float3(0.0f, 0.0f, 0.0f); //Put the ray origin at the camera's position
+        float3 rayOrigin = mul(viewInv, float4(rayOriginRelativeToCamera, 1.0f)).xyz; //Convert the origin from camera space to world space
+        float3 rayDirection = mul(projectionInv, float4(d.x, -d.y, 1.0f, 1.0f)).xyz; //y component is inverted in order to match the image indexing convention of DirectX.
+        rayDirection = mul(viewInv, float4(rayDirection, 0.0f)).xyz;
+        HitInfo payload;
+        payload.color = float3(1.0f, 1.0f, 1.0f); //Initial color of the light is white, implement getting this value from the UI
+        CastDefaultRay(SceneBVH, rayOrigin, rayDirection, payload);
+        gOutput[pixelCoordinates] = float4(payload.color, 1.0f);
+    }
+
+    /*const int numSamples = 1; // Number of indirect rays per bounce
 
     HitInfo payload;
     payload.color = float3(1.0f, 1.0f, 1.0f);
@@ -77,15 +170,18 @@ void RayGen()
         HitInfo samplePayload;
         samplePayload.color = float3(1.0f, 1.0f, 1.0f);
         float sampleContribution = 1.0f;
-
-        for (int i = 0; i < 3; i++) // Bounces
+        
+        for (int j = 0; j < 3; j++) // Bounces
         {
-            RayDesc ray;
-            ray.Origin = mul(viewInv, float4(0, 0, 0, 1));
+            float3 origin = mul(viewInv, float4(finalHitPoint, 1)).xyz;
             float4 target;
-            if (i == 0) // Primary ray
+            if (j == 0) // Primary ray
             {
+                //TODO: Calculate a random direction for the first ray per pixel (each sample needs to have a direction)
+                //the random direction should be different for each iteration of the OUTER loop!
                 target = mul(projectionInv, float4(d.x, -d.y, 1, 1));
+                float4 offset = float4(GetRandomOffset(launchIndex, 1.0f, i), 0.0f);
+                target += offset;
             }
             else
             {
@@ -97,26 +193,30 @@ void RayGen()
             }
 
             samplePayload.didHit = true;
-            ray.Direction = mul(viewInv, float4(target.xyz, 0));
-            ray.TMin = 0;
-            ray.TMax = 100000;
-            TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, samplePayload);
+            float3 direction = mul(viewInv, float4(target.xyz, 0)).xyz;
+            CastRay(origin, direction, samplePayload);
             finalHitPoint = samplePayload.hitWorldPoint;
 
-            if (!samplePayload.didHit)
+            if (samplePayload.didHit)
             {
                 samplePayload.color *= sampleContribution;
                 sampleContribution *= 0.8f;
+            }
+            else
+            {
                 missed = true;
                 break;
             }
         }
         accumulatedColor += samplePayload.color;
-        if (missed) break;
+        if (missed)
+        {
+            break;
+        }
     }
     float3 currentColor = missed ? accumulatedColor : accumulatedColor / numSamples;
     
-    gOutput[launchIndex] = float4(currentColor, 1.0f);
+    gOutput[launchIndex] = float4(currentColor, 1.0f);*/
 }
 
 /*

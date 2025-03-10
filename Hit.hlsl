@@ -1,28 +1,6 @@
 #include "Common.hlsl"
 #include "CheckersPattern.hlsli"
 
-#define PI 3.14159265359
-
-/*
-    //This is a TraceRay() call from the benchmark project. It is here as a documentation because it provides some insight to how the parameters need to be used.
-    TraceRay(
-        g_scene,
-        RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
-        TraceRayParameters::InstanceMask,
-        TraceRayParameters::HitGroup::Offset[RayType::Radiance],
-        TraceRayParameters::HitGroup::GeometryStride,
-        TraceRayParameters::MissShader::Offset[RayType::Radiance],
-        rayDesc,
-        rayPayload
-    );
-*/
-
-// #DXR Extra - Another ray type
-struct ShadowHitInfo
-{
-    bool isHit;
-};
-
 //This structure has the same bit mapping as the "Vertex" structure on the CPU side.
 struct STriVertex
 {
@@ -44,6 +22,13 @@ struct InstanceProperties
     float4x4 objectToWorldNormal;
 };
 
+struct Light
+{
+    float3 color;
+    float3 position;
+    float intensity;
+};
+
 StructuredBuffer<STriVertex> BTriVertex : register(t0);
 StructuredBuffer<int> indices : register(t1);
 // #DXR Extra - Another ray type
@@ -60,7 +45,16 @@ cbuffer Colors : register(b0)
     float3 C;
 }
 
-static float3 lightPosition = float3(0, 10, 0);
+static const int LIGHT_COUNT = 6;
+static Light lights[LIGHT_COUNT] =
+{
+    { float3(1.0f, 1.0f, 1.0f), float3(+00.0f, +10.0f, +00.0f), 0.2f },
+    { float3(1.0f, 1.0f, 1.0f), float3(+10.0f, +10.0f, +00.0f), 0.2f },
+    { float3(1.0f, 1.0f, 1.0f), float3(-10.0f, +10.0f, +00.0f), 0.2f },
+    { float3(1.0f, 1.0f, 1.0f), float3(+00.0f, +10.0f, +10.0f), 0.2f },
+    { float3(1.0f, 1.0f, 1.0f), float3(+00.0f, +10.0f, -10.0f), 0.2f },
+    { float3(1.0f, 1.0f, 1.0f), float3(+00.0f, -10.0f, +00.0f), 0.2f },
+};
 
 float3 ComputeFaceNormal(float3 vertex0, float3 vertex1, float3 vertex2)
 {
@@ -84,12 +78,18 @@ float3 CalculateInterpolatedWorldNormal(float3 barycentrics)
     return normalize(normal);
 }
 
-float CalculateDirectLighting(float3 hitPoint, float3 normal)
+float3 CalculateDirectLighting(float3 hitPoint, float3 normal, float3 surfaceColor)
 {
-    float3 centerLightDir = -normalize(lightPosition - hitPoint);
-    float factor = dot(normal, centerLightDir);
-    float lightIntensity = max(0.0f, factor);
-    return lightIntensity;
+    float3 color = float3(0.0f, 0.0f, 0.0f);
+    for (int i = 0; i < LIGHT_COUNT; i++)
+    {
+        Light light = lights[i];
+        float3 directionTowardsLight = -normalize(light.position - hitPoint);
+        float lightFactor = dot(normal, directionTowardsLight);
+        float totalIntensity = max(0.0f, lightFactor * light.intensity);
+        color += surfaceColor * light.color * totalIntensity;
+    }
+    return color;
 }
 
 void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
@@ -104,20 +104,100 @@ void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
     TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
 }
 
+float3 FresnelSchlick(float cosTheta, float3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+float NormalDistributionGGX(float3 N, float3 H, float roughness)
+{
+    float a      = roughness*roughness;
+    float a2     = a*a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+    float num   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+    float num   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+    return num / denom;
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+
+float3 CalculatePBRShading(Material material, float3 normal, float3 cameraPosition, float3 worldHitPoint)
+{
+    float3 N = -normalize(normal);
+    float3 V = normalize(cameraPosition - worldHitPoint);
+    float3 L0 = float3(0.0f, 0.0f, 0.0f);
+    for (int i = 0; i < LIGHT_COUNT; i++)
+    {
+        Light light = lights[i];
+        float3 lightPosition = light.position;
+        float3 lightColor = light.color;
+        float3 L = normalize(light.position - worldHitPoint);
+        float3 H = normalize(V + L);
+        float distance = length(light.position - worldHitPoint);
+        float attenuation = 1.0f / max(distance * distance, 1.0f); //Clamp denominator to avoid too big values
+        float3 radiance = lightColor * attenuation;
+
+        float3 F0 = float3(0.04f, 0.04f, 0.04f); //This value looks correct for most dielectric surfaces. F0 value for the metallic surfaces are the same as the albedo of the surface.
+        F0 = lerp(F0, material.albedo, material.metallic);
+        float3 F = FresnelSchlick(max(dot(H, V), 0.0f), F0);
+        float NDF = NormalDistributionGGX(N, H, material.roughness);
+        float G = GeometrySmith(N, V, L, material.roughness);
+        float3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0)  + 0.0001; //Offset to avoid division by zero
+        float3 specularLight = numerator / denominator;
+
+        float3 kS = F;
+        float3 kD = float3(1.0f, 1.0f, 1.0f) - kS;
+        kD *= 1.0f - material.metallic;
+        
+        float NdotL = max(dot(N, L), 0.0);
+        L0 += (kD * material.albedo / PI + specularLight) * radiance * NdotL;
+    }
+
+    float3 ambientLight = float3(0.2f, 0.2f, 0.2f); //Constant ambient light for now. This can be set from UI later
+    float3 color = L0 * ambientLight;
+
+    //At this point color is the color of our pixel but we assumed all calculations to be in linear space.
+    //Therefore we need to apply gamma correction before returning.
+    color = color / (color + float3(1.0f, 1.0f, 1.0f));
+    color = pow(color, float3(1.0f / 2.2f, 1.0f / 2.2f, 1.0f / 2.2f));
+    
+    return color;
+}
+
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
 {
     Material material = materials[0];
-    float3 surfaceColor = material.albedo * payload.color;
-    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    /*uint2 pixelCoordinates = DispatchRaysIndex().xy;
+    uint seed = GetPixelSeedForRandomValue();
+    material.albedo    *= RandomFloatInRange(seed, 0.0f, 1.0f);
+    material.roughness *= RandomFloatInRange(seed, 0.0f, 1.0f);
+    material.metallic  *= RandomFloatInRange(seed, 0.0f, 1.0f);*/
+    float3 surfaceColor = material.albedo;
+    float3 hitWorldPosition = GetWorldHitPoint();
     float3 barycentrics = float3(attrib.barycentrics.x, attrib.barycentrics.y, 1.0f - attrib.barycentrics.x - attrib.barycentrics.y);
     float3 normal = CalculateInterpolatedWorldNormal(barycentrics);
-    float lightIntensity = CalculateDirectLighting(hitWorldPosition, normal);
-    
-    payload.rayWorldDirection = WorldRayDirection();
-    payload.hitWorldNormal = normal;
-    payload.hitWorldPoint = hitWorldPosition;
-    payload.color = surfaceColor * lightIntensity;
+    float3 lightColor = CalculateDirectLighting(hitWorldPosition, normal, surfaceColor);
+    payload.color = lightColor + CalculatePBRShading(material, normal, WorldRayOrigin(), hitWorldPosition);
 }
 
 // #DXR Extra: Per-Instance Data
@@ -126,67 +206,25 @@ void PlaneClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttribute
 {
     // #DXR Extra - Another ray type
     //Find the hit position in world space
-    float3 hitWorldPosition = WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
+    float3 hitWorldPosition = GetWorldHitPoint();
     //Calculate the direction towards the light from the position of the ray that hit the plane
-    float3 lightDir = normalize(lightPosition - hitWorldPosition);
+    float3 lightDir = normalize(lights[0].position - hitWorldPosition);
     // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
     
     // #DXR Extra - Simple Lighting
     uint vertId = 3 * PrimitiveIndex();
     float3 e1 = BTriVertex[vertId + 1].position - BTriVertex[vertId + 0].position;
     float3 e2 = BTriVertex[vertId + 2].position - BTriVertex[vertId + 0].position;
-    float3 normal = normalize(cross(e2, e1));
+    float3 normal = normalize(cross(e1, e2));
     normal = mul(instanceProperties[InstanceID()].objectToWorldNormal, float4(normal, 0.f)).xyz;
     
-    float3 centerLightDir = normalize(lightPosition - hitWorldPosition);
+    float3 centerLightDir = normalize(lights[0].position - hitWorldPosition);
     bool isShadowed = dot(normal, centerLightDir) < 0.f;
     
-    //Ray for shadows
-    RayDesc ray;
-    ray.Origin = hitWorldPosition;
-    ray.Direction = lightDir;
-    ray.TMin = 0.01;
-    ray.TMax = 100000;
-    
-    // Initialize the ray payload
     ShadowHitInfo shadowPayload;
-    shadowPayload.isHit = false;
-    TraceRay(
-    // Acceleration structure
-    SceneBVH,
-    // Flags can be used to specify the behavior upon hitting a surface
-    RAY_FLAG_NONE,
-    // Instance inclusion mask, which can be used to mask out some geometry to
-    // this ray by bitwise-anding the mask with a geometry mask. The 0xFF flag then
-    // indicates no geometry will be masked
-    0xFF,
-    // Depending on the type of ray, a given object can have several hit
-    // groups attached (ie. what to do when hitting to compute regular
-    // shading, and what to do when hitting to compute shadows). Those hit
-    // groups are specified sequentially in the shader binding table, so the value below
-    // indicates which offset (on 4 bits) to apply to the hit groups for this
-    // ray. The shadow hit group is the 2nd hit group in the SBT, so an index of 1.
-    1,
-    // The offsets in the SBT can be computed from the object ID, its instance
-    // ID, but also simply by the order the objects have been pushed in the
-    // acceleration structure. This allows the application to group shaders in
-    // the SBT in the same order as they are added in the AS, in which case
-    // the value below represents the stride (4 bits representing the number
-    // of hit groups) between two consecutive objects.
-    0,
-    // Index of the miss shader to use in case several consecutive miss
-    // shaders are present in the SBT. This allows to change the behavior of
-    // the program when no geometry have been hit, for example one to return a
-    // sky color for regular rendering, and another returning a full
-    // visibility value for shadow rays. Shadow miss program is the 2nd miss program,
-    // so an index of 1.
-    1,
-    // Ray information to trace
-    ray,
-    // Payload associated to the ray, which will be used to communicate
-    // between the hit/miss shaders and the raygen
-    shadowPayload
-    );
+    float3 shadowRayOrigin = hitWorldPosition;
+    float3 shadowRayDirection = lightDir;
+    CastShadowRay(SceneBVH, shadowRayOrigin, shadowRayDirection, shadowPayload);
     
     if (!isShadowed)
     {
@@ -195,10 +233,6 @@ void PlaneClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttribute
     float shadowFactor = isShadowed ? 0.3f : 1.0f;
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
-    //TODO: Uncomment the shadowFactor multiplication for shadows (its issue is probably because of the scaling of the platform, try changing the vertices instead of scaling the model)
-    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity; //* shadowFactor;
+    float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity * shadowFactor;
     payload.color = platformColor;
-    payload.hitWorldPoint = hitWorldPosition;
-    payload.hitWorldNormal = normal;
-    payload.rayWorldDirection = WorldRayDirection();
 }

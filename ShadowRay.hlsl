@@ -1,10 +1,6 @@
 // #DXR Extra - Another ray type
 
-// Ray payload for the shadow rays
-struct ShadowHitInfo
-{
-    bool isHit;
-};
+#include "Common.hlsl"
 
 struct Attributes
 {

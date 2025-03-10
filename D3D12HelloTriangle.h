@@ -85,7 +85,7 @@ private:
 		float roughness;
 		float metallic;
 
-		Material(XMFLOAT3 albedo = XMFLOAT3(1.0f, 1.0f, 1.0f), float roughness = 1.0f, float metallic  = 0.0f)
+		Material(XMFLOAT3 albedo = XMFLOAT3(1.0f, 1.0f, 1.0f), float roughness = 0.5f, float metallic  = 1.0f)
 			: albedo(albedo), roughness(roughness), metallic(metallic)
 		{
 
@@ -291,9 +291,6 @@ private:
 	ComPtr<ID3D12Resource> materialsBuffer;
 	void CreateMaterialsBuffer();
 	void UpdateMaterialsBuffer();
-
-	//Denoising
-	void DenoiseOutputImage();
 
 	//Frame time measurement
 	high_resolution_clock::time_point frameStart;

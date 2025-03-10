@@ -18,7 +18,6 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "manipulator.h"
 #include "windowsx.h"
-#include "NRD.h"
 
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
     DXSample(width, height, name),
@@ -448,6 +447,9 @@ void D3D12HelloTriangle::LoadAssets()
 void D3D12HelloTriangle::OnUpdate()
 {
     frameStart = high_resolution_clock::now();
+    materials[0].albedo = uiConstructor.GetAlbedo();
+    materials[0].roughness = uiConstructor.GetRoughness();
+    materials[0].metallic = uiConstructor.GetMetallic();
     UpdateMaterialsBuffer();
     // #DXR Extra: Perspective Camera
     UpdateCameraBuffer();
@@ -470,8 +472,8 @@ void D3D12HelloTriangle::OnRender()
     ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
-    DenoiseOutputImage();
-
+    //TODO: Denoise the output image here
+    // 
     // Present the frame (first argument 1 for vsync enabled, 0 for vsync disabled).
     HRESULT result = m_swapChain->Present(1, 0);
 
@@ -818,16 +820,15 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
         { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
-
     m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
-                    TLASParams(planeBottomLevelBuffers.pResult, XMMatrixTranslation(0.0f, -0.5f, 0.0f) * XMMatrixScaling(10.0f, 1.0f, 10.0f), 2, 0)
+                    TLASParams(planeBottomLevelBuffers.pResult, XMMatrixIdentity(), 2, 0),
                   };
-
+    
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -972,7 +973,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     const UINT HLSL_FLOAT2_SIZE_IN_BYTES = 2 * HLSL_FLOAT_SIZE_IN_BYTES;
     const UINT HLSL_FLOAT3_SIZE_IN_BYTES = 3 * HLSL_FLOAT_SIZE_IN_BYTES;
     const UINT HLSL_FLOAT4_SIZE_IN_BYTES = 4 * HLSL_FLOAT_SIZE_IN_BYTES;
-    pipeline.SetMaxPayloadSize(HLSL_BOOL_SIZE_IN_BYTES + 4 * HLSL_FLOAT3_SIZE_IN_BYTES);
+    pipeline.SetMaxPayloadSize(HLSL_FLOAT3_SIZE_IN_BYTES);
 
     // Upon hitting a surface, DXR can provide several attributes to the hit.
     // We just use the barycentric coordinates defined by the weights u,v
@@ -1266,13 +1267,14 @@ void D3D12HelloTriangle::OnMouseMove(UINT8 wParam, UINT32 lParam)
 void D3D12HelloTriangle::CreatePlaneVB()
 {
     // Define the geometry for a plane.
+    float planeScale = 40.0f;
     Vertex planeVertices[] = {
-        {{-1.5f, -.8f, 01.5f}}, // 0
-        {{-1.5f, -.8f, -1.5f}}, // 1
-        {{01.5f, -.8f, 01.5f}}, // 2
-        {{01.5f, -.8f, 01.5f}}, // 2
-        {{-1.5f, -.8f, -1.5f}}, // 1
-        {{01.5f, -.8f, -1.5f}}  // 4
+        {{-planeScale, -1.0f, +planeScale}}, // 0
+        {{+planeScale, -1.0f, +planeScale}}, // 2
+        {{-planeScale, -1.0f, -planeScale}}, // 1
+        {{-planeScale, -1.0f, -planeScale}}, // 1
+        {{+planeScale, -1.0f, +planeScale}}, // 2
+        {{+planeScale, -1.0f, -planeScale}}  // 4
     };
     const UINT planeBufferSize = sizeof(planeVertices);
 
@@ -1532,30 +1534,4 @@ void D3D12HelloTriangle::UpdateMaterialsBuffer()
     ThrowIfFailed(materialsBuffer->Map(0, nullptr, (void**)&p_gpuData));
     memcpy(p_gpuData, (const void*)materials.data(), bufferSizeInBytes);
     materialsBuffer->Unmap(0, nullptr);
-}
-
-void D3D12HelloTriangle::DenoiseOutputImage()
-{
-    nrd::Instance* nrdInstance;
-    nrd::InstanceCreationDesc nrdCreationDesc{};
-    nrd::DenoiserDesc denoiserDesc{};
-    //denoiserDesc.identifier //???
-    nrd::Denoiser denoiser = nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR;
-    denoiserDesc.denoiser = denoiser;
-    nrdCreationDesc.denoisers = &denoiserDesc;
-    nrdCreationDesc.denoisersNum = 1;
-    nrd::Result denoiserCreationResult = nrd::CreateInstance(nrdCreationDesc, nrdInstance);
-    if (denoiserCreationResult != nrd::Result::SUCCESS)
-    {
-        std::cerr << "Failed to create NRD instance!" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    nrd::CommonSettings settings{};
-    settings.isMotionVectorInWorldSpace = false;
-    settings.timeDeltaBetweenFrames = frameTime;
-    settings.frameIndex = m_frameIndex;
-
-    //Input textures
-    nrd::DispatchDesc dispatchDesc{};
 }
