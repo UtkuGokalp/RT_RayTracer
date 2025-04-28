@@ -23,6 +23,7 @@
 #include "UIConstructor.h"
 #include "OBJ_FileManager.h"
 #include "chrono"
+#include "thread"
 
 using namespace DirectX;
 using namespace std::chrono;
@@ -47,50 +48,18 @@ public:
 private:
 	static const UINT FrameCount = 2;
 
-	/*
-	//The version of the Vertex struct below is used for creating Menger Fractal geometry.
-	//For implementing a material system, this was disabled however the Menger Fractal creation code
-	//isn't removed from the other parts of the codebase yet. So if those parts of the codebase are ever used,
-	//the structure below for should be used for vertices. Currently those parts of the codebase are not used.
-	struct Vertex
-	{
-		Vertex()
-		{
-			position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-			color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-		}
-		XMFLOAT3 position;
-		XMFLOAT4 color;
-		//The constructors below are unused. They are only for providing compatibility
-		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
-		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z), color(color) {}
-		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position), color(color) {}
-	};*/
-
 	struct Vertex
 	{
 		XMFLOAT3 position;
 		XMFLOAT3 normal;
-		Vertex(XMFLOAT3 position = XMFLOAT3(0.0f, 0.0f, 0.0f)) : position(position) { }
+		Vertex(XMFLOAT3 position = XMFLOAT3(0.0f, 0.0f, 0.0f)) : position(position) {}
 		//The constructors below are unused. They are only for providing compatibility
 		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
 		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z) {}
 		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position) {}
 	};
+
 	void ComputeVertexNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
-
-	struct Material
-	{
-		XMFLOAT3 albedo;
-		float roughness;
-		float metallic;
-
-		Material(XMFLOAT3 albedo = XMFLOAT3(1.0f, 1.0f, 1.0f), float roughness = 0.5f, float metallic  = 1.0f)
-			: albedo(albedo), roughness(roughness), metallic(metallic)
-		{
-
-		}
-	};
 
 	// Pipeline objects.
 	CD3DX12_VIEWPORT m_viewport;
@@ -129,6 +98,20 @@ private:
 	virtual void OnKeyUp(UINT8 key);
 	virtual void OnKeyDown(UINT8 key);
 
+	struct Material
+	{
+		XMFLOAT3 albedo;
+		float roughness;
+		float metallic;
+		float reflectivity;
+
+		Material(XMFLOAT3 albedo = XMFLOAT3(1.0f, 1.0f, 1.0f), float roughness = 0.5f, float metallic = 1.0f, float reflectivity = 0.5f)
+			: albedo(albedo), roughness(roughness), metallic(metallic), reflectivity(reflectivity)
+		{
+
+		}
+	};
+
 	// #DXR
 	struct AccelerationStructureBuffers
 	{
@@ -153,7 +136,6 @@ private:
 
 	ComPtr<ID3D12Resource> m_bottomLevelAS; // Storage for the bottom Level AS
 
-	nv_helpers_dx12::TopLevelASGenerator m_topLevelASGenerator;
 	AccelerationStructureBuffers m_topLevelASBuffers;
 	std::vector<TLASParams> m_instances;
 
@@ -170,6 +152,11 @@ private:
 	/// <param name="instances">Parameters of TLAS</param>
 	/// <param name="updateOnly">Whether to build TLAS from scratch or just update the existing one</param>
 	void CreateTopLevelAS(const std::vector<TLASParams> &instances, bool updateOnly = false);
+	/// <summary>
+	/// Updates the TLAS with the given instances. Used for loading new .obj files on the fly.
+	/// </summary>
+	/// <param name="newInstances"></param>
+	void UpdateModelWithPendings();
 
 	/// <summary>
 	/// Create all acceleration structures, bottom and top
@@ -296,4 +283,10 @@ private:
 	high_resolution_clock::time_point frameStart;
 	high_resolution_clock::time_point frameEnd;
 	float frameTime; //Frame time in milliseconds
+
+	//Model updating
+	void QueueModelVertexAndIndexBufferUpdates(std::vector<XMFLOAT3>& vertexPoints, std::vector<UINT>& indices);
+	std::vector<Vertex> pendingVertices;
+	std::vector<UINT> pendingIndices;
+	bool pendingModelUpdate = false;
 };

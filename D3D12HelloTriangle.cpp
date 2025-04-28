@@ -29,6 +29,12 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
     renderUI(false),
     materials({ Material() })
 {
+    uiConstructor.SetModelUpdateFunction(
+        [this](std::vector<XMFLOAT3>& vertices, std::vector<UINT>& indices)
+        {
+            this->QueueModelVertexAndIndexBufferUpdates(vertices, indices);
+        }
+    );
 }
 
 void D3D12HelloTriangle::OnInit()
@@ -46,7 +52,9 @@ void D3D12HelloTriangle::OnInit()
     // Create the raytracing pipeline, associating the shader code to symbol names
     // and to their root signatures, and defining the amount of memory carried by
     // rays (ray payload)
+    
     CreateRaytracingPipeline();
+
     // #DXR Extra: Per-Instance Data
     CreatePerInstanceConstantBuffers();
     // #DXR Extra: Per-Instance Data
@@ -73,6 +81,7 @@ void D3D12HelloTriangle::OnInit()
     // Command lists are created in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.
     ThrowIfFailed(m_commandList->Close());
+    
 }
 
 // Load the rendering pipeline dependencies.
@@ -88,7 +97,11 @@ void D3D12HelloTriangle::LoadPipeline()
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
         {
             debugController->EnableDebugLayer();
-
+            ComPtr<ID3D12Debug1> debugController1;
+            if (SUCCEEDED(debugController.As(&debugController1)))
+            {
+                debugController1->SetEnableGPUBasedValidation(TRUE);
+            }
             // Enable additional debug layers.
             dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
         }
@@ -120,7 +133,7 @@ void D3D12HelloTriangle::LoadPipeline()
             IID_PPV_ARGS(&m_device)
         ));
     }
-
+    
     // Describe and create the command queue.
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -137,7 +150,7 @@ void D3D12HelloTriangle::LoadPipeline()
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.SampleDesc.Count = 1;
-
+    
     ComPtr<IDXGISwapChain1> swapChain;
     ThrowIfFailed(factory->CreateSwapChainForHwnd(
         m_commandQueue.Get(),		// Swap chain needs the queue so that it can force a flush on it.
@@ -180,7 +193,7 @@ void D3D12HelloTriangle::LoadPipeline()
     }
 
     ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
-
+    
     // #DXR Extra: Depth Buffering
     // The original sample does not support depth buffering, so we need to allocate a depth buffer,
     // and later bind it before rasterization
@@ -275,7 +288,7 @@ void D3D12HelloTriangle::LoadAssets()
         ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
         // Define the vertex input layout.
-        D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
+        D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =        
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
             { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
@@ -309,7 +322,7 @@ void D3D12HelloTriangle::LoadAssets()
         // Define the geometry for a triangle.
         std::vector<Vertex> vertices;
         std::vector<UINT> indices;
-        
+
         {
             bool createCube = false; //Set this to true to make a cube for debugging purposes.
             if (createCube)
@@ -354,8 +367,8 @@ void D3D12HelloTriangle::LoadAssets()
                 std::vector<objl::Vertex> modelFileVertices;
 
                 std::string path = "teapot.obj";
-                ofm.LoadObjFile(path, modelFileVertices, indices);
-
+                bool modelFileLoaded = ofm.LoadObjFile(path, modelFileVertices, indices);
+                assert(modelFileLoaded == true);
                 //Convert from objl::Vertex to Vertex struct to complete the load.
                 for (auto& vertex : modelFileVertices)
                 {
@@ -450,6 +463,7 @@ void D3D12HelloTriangle::OnUpdate()
     materials[0].albedo = uiConstructor.GetAlbedo();
     materials[0].roughness = uiConstructor.GetRoughness();
     materials[0].metallic = uiConstructor.GetMetallic();
+    materials[0].reflectivity = uiConstructor.GetReflectivity();
     UpdateMaterialsBuffer();
     // #DXR Extra: Perspective Camera
     UpdateCameraBuffer();
@@ -486,6 +500,15 @@ void D3D12HelloTriangle::OnRender()
     }
 
     WaitForPreviousFrame();
+
+    //Update the model if there is a pending update
+    if (pendingModelUpdate)
+    {
+        //TODO: Update the model
+        WaitForPreviousFrame();
+        UpdateModelWithPendings();
+        pendingModelUpdate = false;
+    }
 
     //Calculate how long the frame took
     frameEnd = high_resolution_clock::now();
@@ -576,7 +599,7 @@ void D3D12HelloTriangle::PopulateCommandList()
         // Refit the top-level acceleration structure to account for the new transform matrix of the
         // triangle. Note that the build contains a barrier, hence we can do the rendering in the
         // same command list
-        CreateTopLevelAS(m_instances, true);
+        //CreateTopLevelAS(m_instances, true);
 
         // #DXR
         // Bind the descriptor heap giving access to the top-level acceleration
@@ -654,7 +677,7 @@ void D3D12HelloTriangle::PopulateCommandList()
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_commandList.Get());
     }
-
+    //TODO: Add a flag and check if the flag is set. It it is, add TLAS generation code here maybe? or the other codes? idek tbh
     // Indicate that the back buffer will now be used to present.
     m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
     ThrowIfFailed(m_commandList->Close());
@@ -678,7 +701,7 @@ void D3D12HelloTriangle::WaitForPreviousFrame()
         ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
-    
+
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
@@ -742,7 +765,7 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
                 0);
         }
     }
-    
+
     //Step two: Computing the sizes for the buffers
     // The AS build requires some scratch space to store temporary information.
     // The amount of scratch memory is dependent on the scene complexity.
@@ -764,12 +787,14 @@ D3D12HelloTriangle::AccelerationStructureBuffers D3D12HelloTriangle::CreateBotto
     // on the generated AS, so that it can be used to compute a top-level AS right
     // after this method.
     bottomLevelAS.Generate(m_commandList.Get(), buffers.pScratch.Get(), buffers.pResult.Get(), false, nullptr);
-
+    //TODO: Add executing the command list here
     return buffers;
 }
 
 void D3D12HelloTriangle::CreateTopLevelAS(const std::vector<TLASParams>& instances, bool updateOnly)
 {
+    nv_helpers_dx12::TopLevelASGenerator m_topLevelASGenerator;
+
     if (!updateOnly)
     {
         // Create the main acceleration structure that holds all instances of the scene.
@@ -827,8 +852,8 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
                     TLASParams(planeBottomLevelBuffers.pResult, XMMatrixIdentity(), 2, 0),
-                  };
-    
+    };
+
     CreateTopLevelAS(m_instances);
 
     //Flush the command list and wait for it to finish
@@ -855,7 +880,7 @@ ComPtr<ID3D12RootSignature> D3D12HelloTriangle::CreateRayGenSignature()
     //Add the external data needed for the shader program
     rsg.AddHeapRangesParameter({ {0 /*u0*/, 1 /*1 descriptor*/, 0 /*use the implicit register space 0*/, D3D12_DESCRIPTOR_RANGE_TYPE_UAV /*UAV representing the output buffer*/, 0 /*heap slot where the UAV is defined*/},
                                  {0 /*t0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*TLAS*/, 1},
-                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2}});
+                                 {0 /*b0*/, 1, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV /*Camera parameters*/, 2} });
 
     return rsg.Generate(m_device.Get(), true);
 }
@@ -907,7 +932,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // characteristics in a single structure used by DXR to invoke the shaders and
     // manage temporary memory during raytracing
     nv_helpers_dx12::RayTracingPipelineGenerator pipeline(m_device.Get());
-    
+
     //First we compile the HLSL shaders to DXIL so that they can be used in GPUs.
     //The raytracing pipeline contains all the shaders that may be executed during the raytracing process.
     //The codes are separated semantically to raygen, miss and hit for clarity. Any code layout can be used.
@@ -967,9 +992,9 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // ie. the data exchanged between shaders, such as the HitInfo structure in the HLSL code.
     // It is important to keep this value as low as possible as a too high value
     // would result in unnecessary memory consumption and cache trashing.
-    const UINT HLSL_UINT_SIZE_IN_BYTES   = 4;
+    const UINT HLSL_UINT_SIZE_IN_BYTES = 4;
     const UINT HLSL_BOOL_SIZE_IN_BYTES = 4;
-    const UINT HLSL_FLOAT_SIZE_IN_BYTES  = 4;
+    const UINT HLSL_FLOAT_SIZE_IN_BYTES = 4;
     const UINT HLSL_FLOAT2_SIZE_IN_BYTES = 2 * HLSL_FLOAT_SIZE_IN_BYTES;
     const UINT HLSL_FLOAT3_SIZE_IN_BYTES = 3 * HLSL_FLOAT_SIZE_IN_BYTES;
     const UINT HLSL_FLOAT4_SIZE_IN_BYTES = 4 * HLSL_FLOAT_SIZE_IN_BYTES;
@@ -986,7 +1011,7 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     // we need a depth of at least 2 (shadows make it possible to shoot rays from a hit point).
     // Note that this recursion depth should be kept to a minimum for best performance.
     // Path tracing algorithms can be easily flattened into a simple loop in the ray generation.
-    pipeline.SetMaxRecursionDepth(16);
+    pipeline.SetMaxRecursionDepth(20);
 
     //Seventh, finally we generate the pipeline to be executed on the GPU and then cast the state object to a properties object
     //so that later we can access the shader pointers by name.
@@ -1016,8 +1041,11 @@ void D3D12HelloTriangle::CreateRaytracingOutputBuffer()
 //Create the main heap used by shaders, which allows access to the raytracing output and the TLAS
 void D3D12HelloTriangle::CreateShaderResourceHeap()
 {
-    //5 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting, 1 for the materials
-    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 5, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    if (m_srvUavHeap == nullptr)
+    {
+        //5 entries needed: 1 UAV for the raytracing output, 1 SRV for TLAS, 1 CBV for camera matrices and 1 for the per-instance data for the lighting, 1 for the materials
+        m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(m_device.Get(), 5, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    }
 
     //Get a handle to te heap memory on the CPU side so that descriptors can be directly written to
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle_cpu = m_srvUavHeap->GetCPUDescriptorHandleForHeapStart();
@@ -1099,7 +1127,7 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
                                            (void*)m_perInstanceConstantBuffers[0]->GetGPUVirtualAddress(),
                                            (void*)m_instancePropertiesBuffer->GetGPUVirtualAddress(),
                                            (void*)materialsBuffer->GetGPUVirtualAddress(),
-                                         });
+        });
     // #DXR Extra - Another ray type
     m_sbtHelper.AddHitGroup(L"ShadowHitGroup", {});
 
@@ -1109,16 +1137,24 @@ void D3D12HelloTriangle::CreateShaderBindingTable()
             (void*)m_planeBuffer->GetGPUVirtualAddress(),
             (void*)m_globalConstantBuffer->GetGPUVirtualAddress(),
             heapPointer,
-            //nullptr, //Why is this even here??
-            //TODO: Is is necessary to put the materialsBuffer here???
         });
 
     // Compute the size of the SBT given the number of shaders and their parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
 
+    //if (m_sbtStorage != nullptr)
+    //{
+    //    m_sbtStorage.Reset();
+    //    m_sbtStorage = nullptr;
+    //}
+
     // Create the SBT on the upload heap. This is required as the helper will use
     // mapping to write the SBT contents. After the SBT compilation it could be
     // copied to the default heap for performance.
+    if (m_sbtStorage != nullptr)
+    {
+        m_sbtStorage.Reset();
+    }
     m_sbtStorage = nv_helpers_dx12::CreateBuffer(m_device.Get(), sbtSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
 
     if (!m_sbtStorage)
@@ -1180,7 +1216,7 @@ void D3D12HelloTriangle::UpdateCameraBuffer()
     // space
     const glm::mat4& mat = nv_helpers_dx12::CameraManip.getMatrix();
     memcpy(&matrices[0].r->m128_f32[0], glm::value_ptr(mat), 16 * sizeof(float));
-    
+
     float fovAngleY_degrees = 45.0f;
     float fovAngleY = fovAngleY_degrees * XM_PI / 180.0f; //Convert fov angle degrees to radians
     matrices[1] = XMMatrixPerspectiveFovRH(fovAngleY, m_aspectRatio, 0.1f, 1000.0f);
@@ -1534,4 +1570,119 @@ void D3D12HelloTriangle::UpdateMaterialsBuffer()
     ThrowIfFailed(materialsBuffer->Map(0, nullptr, (void**)&p_gpuData));
     memcpy(p_gpuData, (const void*)materials.data(), bufferSizeInBytes);
     materialsBuffer->Unmap(0, nullptr);
+}
+
+void D3D12HelloTriangle::UpdateModelWithPendings()
+{
+    {
+        const UINT vertexBufferSizeInBytes = ROUND_UP(pendingVertices.size() * sizeof(Vertex), 256);
+        const UINT indexBufferSizeInBytes = ROUND_UP(pendingIndices.size() * sizeof(UINT), 256);
+
+        //WaitForPreviousFrame();
+        if (m_modelVertexBuffer != nullptr)
+        {
+            m_modelVertexBuffer.Reset();
+        }
+        if (m_modelIndexBuffer != nullptr)
+        {
+            m_modelIndexBuffer.Reset();
+        }
+        m_modelVertexBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), vertexBufferSizeInBytes, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+        m_modelIndexBuffer = nv_helpers_dx12::CreateBuffer(m_device.Get(), indexBufferSizeInBytes, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+
+        // Copy the triangle data to the vertex buffer.
+        UINT8* pVertexDataBegin;
+        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
+        ThrowIfFailed(m_modelVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+        memcpy(pVertexDataBegin, pendingVertices.data(), vertexBufferSizeInBytes);
+        m_modelVertexBuffer->Unmap(0, nullptr);
+        m_modelVertexCount = pendingVertices.size();
+
+        // Initialize the vertex buffer view.
+        m_modelVertexBufferView.BufferLocation = m_modelVertexBuffer->GetGPUVirtualAddress();
+        m_modelVertexBufferView.StrideInBytes = sizeof(Vertex);
+        m_modelVertexBufferView.SizeInBytes = vertexBufferSizeInBytes;
+
+        // Copy the triangle data to the index buffer.
+        UINT8* pIndexDataBegin;
+        ThrowIfFailed(m_modelIndexBuffer->Map(0, &readRange, (void**)&pIndexDataBegin));
+        memcpy(pIndexDataBegin, pendingIndices.data(), indexBufferSizeInBytes);
+        m_modelIndexBuffer->Unmap(0, nullptr);
+        m_modelIndexCount = pendingIndices.size();
+
+        // Initialize the index buffer view.
+        m_modelIndexBufferView.BufferLocation = m_modelIndexBuffer->GetGPUVirtualAddress();
+        m_modelIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+        m_modelIndexBufferView.SizeInBytes = indexBufferSizeInBytes;
+    }
+
+    // Reset command allocator and list before doing any GPU work
+    ThrowIfFailed(m_commandAllocator->Reset());
+    ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), nullptr));
+
+    AccelerationStructureBuffers modelBottomLevelBuffers = CreateBottomLevelAS({ { m_modelVertexBuffer.Get(), m_modelVertexCount } }, { { m_modelIndexBuffer.Get(), m_modelIndexCount } });
+    AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
+
+    // Ensure BLAS creation is done before moving onto TLAS
+    m_fenceValue++;
+    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValue));
+    ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent));
+    WaitForSingleObject(m_fenceEvent, INFINITE);
+
+    m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, -5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, -5.0f), 0, 0),
+                    TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(5.0f, 0.0f, 5.0f), 0, 0),
+                    TLASParams(planeBottomLevelBuffers.pResult, XMMatrixIdentity(), 2, 0),
+    };
+
+    // Rebuild TLAS
+    CreateTopLevelAS(m_instances);
+
+    // Flush the command list and wait for completion
+    ThrowIfFailed(m_commandList->Close());
+    ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+    m_commandQueue->ExecuteCommandLists(1, ppCommandLists);
+
+    m_fenceValue++;
+    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValue));
+    ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent));
+    WaitForSingleObject(m_fenceEvent, INFINITE);
+
+    // Recreate the descriptor heap and shader binding table to reflect the new TLAS
+    CreateShaderResourceHeap();
+    CreateShaderBindingTable();
+    //One not so great but probably will work solution is to wait for a little bit here so that 
+    //the other pieces of the code can finish what they are working on. It does not 100% guarantee that no crash will happen.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+void D3D12HelloTriangle::QueueModelVertexAndIndexBufferUpdates(std::vector<XMFLOAT3>& vertexPoints, std::vector<UINT>& indices)
+{
+     //Update the vertex and index buffers
+     {
+        std::vector<Vertex> vertices;
+        vertices.reserve(vertexPoints.size());
+        for (XMFLOAT3& vertexPoint : vertexPoints)
+        {
+            vertices.push_back(Vertex(vertexPoint));
+        }
+
+        ComputeVertexNormals(vertices, indices);
+
+        //Clear all the data that might exist on the pending buffers.
+        pendingVertices.clear();
+        pendingIndices.clear();
+        for (Vertex& v : vertices)
+        {
+            pendingVertices.push_back(v);
+        }
+        for (UINT& index : indices)
+        {
+            pendingIndices.push_back(index);
+        }
+        pendingModelUpdate = true;
+    }
 }

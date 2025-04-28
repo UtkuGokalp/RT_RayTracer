@@ -3,8 +3,15 @@
 #include "imgui.h"
 #include <array>
 #include <DirectXMath.h>
+#include <functional>
+#include <string>
+#include "OBJ_FileManager.h"
+
+typedef unsigned int UINT;
 
 using namespace DirectX;
+
+extern class D3D12HelloTriangle;
 
 class UIConstructor
 {
@@ -20,6 +27,8 @@ public:
     XMFLOAT3 GetAlbedo();
     float GetRoughness();
     float GetMetallic();
+    float GetReflectivity();
+    void SetModelUpdateFunction(std::function<void(std::vector<XMFLOAT3>& vertices, std::vector<UINT>& indices)> function);
 private:
     bool demoUIShown;
     float lightColor[3];
@@ -29,4 +38,8 @@ private:
     float albedo[3];
     float roughness;
     float metallic;
+    float reflectivity;
+    std::function<void(std::vector<XMFLOAT3>& vertices, std::vector<UINT>& indices)> modelUpdateFunction;
+    std::string modelFileLoadFeedbackMessage;
+    char newModelFilePath[121] = { 0 };
 };
