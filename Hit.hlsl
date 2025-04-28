@@ -13,6 +13,7 @@ struct Material
 	float3 albedo;
 	float roughness;
 	float metallic;
+    float reflectivity;
 };
 
 // #DXR Extra - Simple Lighting
@@ -95,13 +96,8 @@ float3 CalculateDirectLighting(float3 hitPoint, float3 normal, float3 surfaceCol
 void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
 {
     float3 viewDir = normalize(WorldRayDirection());
-    float3 reflectionDirection = normalize(reflect(viewDir, normal)); // RandomHemisphereDirection(normal, seed);
-    RayDesc ray;
-    ray.Origin = hitPoint + reflectionDirection * 0.001f; // Offset to avoid self-intersection
-    ray.Direction = reflectionDirection;
-    ray.TMin = 0.001f;
-    ray.TMax = 1000.0f;
-    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
+    float3 reflectionDirection = normalize(reflect(viewDir, normal));
+    CastReflectionRay(SceneBVH, hitPoint, reflectionDirection, payload);
 }
 
 float3 FresnelSchlick(float cosTheta, float3 F0)
@@ -186,18 +182,17 @@ float3 CalculatePBRShading(Material material, float3 normal, float3 cameraPositi
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
 {
-    Material material = materials[0];
-    /*uint2 pixelCoordinates = DispatchRaysIndex().xy;
-    uint seed = GetPixelSeedForRandomValue();
-    material.albedo    *= RandomFloatInRange(seed, 0.0f, 1.0f);
-    material.roughness *= RandomFloatInRange(seed, 0.0f, 1.0f);
-    material.metallic  *= RandomFloatInRange(seed, 0.0f, 1.0f);*/
-    float3 surfaceColor = material.albedo;
     float3 hitWorldPosition = GetWorldHitPoint();
     float3 barycentrics = float3(attrib.barycentrics.x, attrib.barycentrics.y, 1.0f - attrib.barycentrics.x - attrib.barycentrics.y);
     float3 normal = CalculateInterpolatedWorldNormal(barycentrics);
+    Material material = materials[0];
+    float3 surfaceColor = material.albedo;
     float3 lightColor = CalculateDirectLighting(hitWorldPosition, normal, surfaceColor);
-    payload.color = lightColor + CalculatePBRShading(material, normal, WorldRayOrigin(), hitWorldPosition);
+    float3 finalSurfaceColor = lightColor + CalculatePBRShading(material, normal, WorldRayOrigin(), hitWorldPosition);
+    HitInfo reflectionPayload;
+    ReflectRay(hitWorldPosition, normal, reflectionPayload);
+    float reflectivity = InstanceID() == 0 || InstanceID() == 1 ? material.reflectivity : 0.0f;
+    payload.color = lerp(finalSurfaceColor, reflectionPayload.color, reflectivity);
 }
 
 // #DXR Extra: Per-Instance Data

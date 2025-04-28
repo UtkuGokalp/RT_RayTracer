@@ -72,6 +72,7 @@ float RandomFloatInRange(inout uint seed, float minInclusive, float maxInclusive
 
 void CastDefaultRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 direction, inout HitInfo payload)
 {
+    direction = normalize(direction);
     RayDesc ray;
     ray.Origin = origin;
     ray.Direction = direction;
@@ -81,8 +82,21 @@ void CastDefaultRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 
     TraceRay(TLAS, RAY_FLAG_NONE, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
 }
 
+void CastReflectionRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 direction, inout HitInfo payload)
+{
+    direction = normalize(direction);
+    RayDesc ray;
+    ray.Origin = origin + direction * 0.001f; //Small offset to avoid self intersection
+    ray.Direction = direction;
+    ray.TMin = 0.001f;
+    ray.TMax = 1000.0f;
+    TraceRay(TLAS, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
+    //TraceRay(TLAS, RAY_FLAG_NONE, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
+}
+
 void CastShadowRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 direction, inout ShadowHitInfo payload)
 {
+    direction = normalize(direction);
     RayDesc ray;
     ray.Origin = origin;
     ray.Direction = direction;

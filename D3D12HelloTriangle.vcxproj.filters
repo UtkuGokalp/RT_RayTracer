@@ -270,8 +270,6 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Common.hlsl" />
-    <FxCompile Include="Hit.hlsl" />
     <FxCompile Include="Miss.hlsl" />
     <FxCompile Include="RayGen.hlsl" />
     <FxCompile Include="ShadowRay.hlsl" />
@@ -391,6 +389,8 @@
     <None Include="_NRD_SDK\Shaders\Include\NRD.hlsli" />
     <None Include="_NRD_SDK\Shaders\Include\NRDEncoding.hlsli" />
     <None Include="_NRI_SDK\Include\NRICompatibility.hlsli" />
+    <None Include="Common.hlsl" />
+    <None Include="Hit.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="glm\CMakeLists.txt" />
@@ -400,7 +400,6 @@
     <Object Include="teapot_with_normals.obj" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="libs\NRD.lib" />
     <Library Include="libs\NRD.lib" />
   </ItemGroup>
 </Project>

@@ -14,6 +14,8 @@ UIConstructor::UIConstructor()
     albedo[2] = 1.0f;
     roughness = 0.5f;
     metallic = 0.5f;
+    modelUpdateFunction = nullptr;
+    modelFileLoadFeedbackMessage = "";
 }
 
 void UIConstructor::Construct()
@@ -34,6 +36,7 @@ void UIConstructor::Construct()
     ImGui::ColorPicker3("Albedo", albedo);
     ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f);
     ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f);
+    ImGui::SliderFloat("Reflectivity", &reflectivity, 0.0f, 1.0f);
     ImGui::End();
 
     //Rendering mode display
@@ -43,13 +46,39 @@ void UIConstructor::Construct()
 
     //File Selection
     ImGui::Begin("File Selection");
-    char temp[121] = { 0 };
-    ImGui::InputText("File Path", temp, 120); //TODO: Change temp to an actual buffer for the file path (120 characters + 1 for the null character should be enough)
+    ImGui::InputText("File Path", newModelFilePath, 120);
 
     if (ImGui::Button("Load Model File", ImVec2(120, 20)))
     {
+        if (modelUpdateFunction == nullptr)
+        {
+            modelFileLoadFeedbackMessage = "No function is set to update the model parameters";
+        }
+        else
+        {
+            OBJFileManager ofm = OBJFileManager();
+            std::vector<objl::Vertex> vertices;
+            std::vector<UINT> indices;
+            bool loaded = ofm.LoadObjFile(std::string(newModelFilePath), vertices, indices);
+            if (loaded)
+            {
+                std::vector<XMFLOAT3> vertexPoints;
+                vertexPoints.reserve(vertices.size());
+                for (objl::Vertex& vertex : vertices)
+                {
+                    objl::Vector3 position = vertex.Position;
+                    vertexPoints.push_back(XMFLOAT3(position.X, position.Y, position.Z));
+                }
+                modelUpdateFunction(vertexPoints, indices);
+                modelFileLoadFeedbackMessage = "Succesfully loaded the file.";
+            }
+            else
+            {
+                modelFileLoadFeedbackMessage = "Couldn't load file. Check if the file exists.";
+            }
+        }
     }
-    ImGui::Text("File Loaded/File Not Found Placeholder text");
+    ImGui::Text(modelFileLoadFeedbackMessage.data());
     ImGui::End();
 
     //Lighting controls
@@ -102,4 +131,14 @@ float UIConstructor::GetRoughness()
 float UIConstructor::GetMetallic()
 {
     return metallic;
+}
+
+void UIConstructor::SetModelUpdateFunction(std::function<void(std::vector<XMFLOAT3>& vertices, std::vector<UINT>& indices)> function)
+{
+    modelUpdateFunction = function;
+}
+
+float UIConstructor::GetReflectivity()
+{
+    return reflectivity;
 }
