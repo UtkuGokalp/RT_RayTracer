@@ -17,10 +17,14 @@ bool OBJFileManager::LoadObjFile(std::string path, std::vector<objl::Vertex>& ve
     std::string str;
     unsigned int max_index = 0;
     while (std::getline(file, str))
-    {   
+    {
+        if (str.length() < 2)
+        {
+            continue;
+        }
         std::string data = std::string(str.c_str() + 1);
         std::stringstream ss = std::stringstream(data);
-        if (str[0] == 'v') //vertex
+        if (str[0] == 'v' && str[1] == ' ') //vertex
         {
             float x, y, z;
             ss >> x >> y >> z;
@@ -28,7 +32,7 @@ bool OBJFileManager::LoadObjFile(std::string path, std::vector<objl::Vertex>& ve
             v.Position = objl::Vector3(x, y, z);
             vertices.push_back(v);
         }
-        else if (str[0] == 'f') //face
+        else if (str[0] == 'f' && str[1] == ' ') //face
         {
             unsigned int i0, i1, i2;
             ss >> i0 >> i1 >> i2;

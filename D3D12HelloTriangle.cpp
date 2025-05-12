@@ -1684,5 +1684,5 @@ void D3D12HelloTriangle::QueueModelVertexAndIndexBufferUpdates(std::vector<XMFLO
             pendingIndices.push_back(index);
         }
         pendingModelUpdate = true;
-    }
+     }
 }
