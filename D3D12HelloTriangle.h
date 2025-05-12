@@ -193,7 +193,8 @@ private:
 	nv_helpers_dx12::ShaderBindingTableGenerator m_sbtHelper;
 	ComPtr<ID3D12Resource> m_sbtStorage;
 
-	// #DXR Extra: Perspective Camera	
+	// #DXR Extra: Perspective Camera
+	//It is important to start the camera from the center of the world, that is, from (0.0f, 0.0f, 0.0f). This is because the raygen shader expects the camera to be initially at the origin.
 	/// <summary>
 	/// The camera buffer is a constant buffer that stores the transform matrices of the camera, for use by both the rasterization and raytracing.
 	/// This method allocates the buffer where the matrices will be copied.
