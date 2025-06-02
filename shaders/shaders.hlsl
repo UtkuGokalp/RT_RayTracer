@@ -9,6 +9,10 @@
 //
 //*********************************************************
 
+//This shader file has nothing to do with ray tracing.
+//At the beginning of this project, rasterization rendering was also planned to be implemented.
+//Due to time constraints, that decision was scrapped. This shader file is for the scrapped rasterization pipeline.
+
 struct PSInput
 {
 	float4 position : SV_POSITION;

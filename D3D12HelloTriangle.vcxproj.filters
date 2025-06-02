@@ -381,7 +381,6 @@
     <None Include="_NRI_SDK\Include\NRICompatibility.hlsli" />
     <None Include="shaders\Common.hlsl" />
     <None Include="shaders\Hit.hlsl" />
-    <None Include="shaders\shaders.hlsl" />
     <None Include="shaders\Miss.hlsl" />
     <None Include="shaders\RayGen.hlsl" />
     <None Include="shaders\ShadowRay.hlsl" />
@@ -394,6 +393,6 @@
     <Object Include="models\teapot.obj" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="bin\x64\Debug\shaders\shaders.hlsl" />
+    <FxCompile Include="shaders\shaders.hlsl" />
   </ItemGroup>
 </Project>
