@@ -15,25 +15,25 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
+    <ClInclude Include="include\stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="d3dx12.h">
+    <ClInclude Include="include\d3dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DXSample.h">
+    <ClInclude Include="include\DXSample.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DXSampleHelper.h">
+    <ClInclude Include="include\DXSampleHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12HelloTriangle.h">
+    <ClInclude Include="include\D3D12HelloTriangle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Win32Application.h">
+    <ClInclude Include="include\Win32Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DXRHelper.h" />
+    <ClInclude Include="include\DXRHelper.h" />
     <ClInclude Include="nv_helpers_dx12\BottomLevelASGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\RaytracingPipelineGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\RootSignatureGenerator.h" />
@@ -183,7 +183,7 @@
     <ClInclude Include="glm\vec3.hpp" />
     <ClInclude Include="glm\vec4.hpp" />
     <ClInclude Include="glm\vector_relational.hpp" />
-    <ClInclude Include="manipulator.h" />
+    <ClInclude Include="include\manipulator.h" />
     <ClInclude Include="ImGui\imgui.h" />
     <ClInclude Include="ImGui\imconfig.h" />
     <ClInclude Include="ImGui\imgui_internal.h" />
@@ -192,9 +192,9 @@
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="ImGui\imgui_impl_dx12.h" />
     <ClInclude Include="ImGui\imgui_impl_win32.h" />
-    <ClInclude Include="UIConstructor.h" />
-    <ClInclude Include="OBJ_Loader.h" />
-    <ClInclude Include="OBJ_FileManager.h" />
+    <ClInclude Include="include\UIConstructor.h" />
+    <ClInclude Include="include\OBJ_Loader.h" />
+    <ClInclude Include="include\OBJ_FileManager.h" />
     <ClInclude Include="NRDInclude\NRI.h" />
     <ClInclude Include="_NRD_SDK\Include\NRD.h" />
     <ClInclude Include="_NRD_SDK\Include\NRDDescs.h" />
@@ -230,19 +230,19 @@
     <ClInclude Include="ffx_api\ffx_upscale.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp">
+    <ClCompile Include="src\stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Main.cpp">
+    <ClCompile Include="src\Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DXSample.cpp">
+    <ClCompile Include="src\DXSample.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="D3D12HelloTriangle.cpp">
+    <ClCompile Include="src\D3D12HelloTriangle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Win32Application.cpp">
+    <ClCompile Include="src\Win32Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="nv_helpers_dx12\BottomLevelASGenerator.cpp" />
@@ -252,7 +252,7 @@
     <ClCompile Include="nv_helpers_dx12\TopLevelASGenerator.cpp" />
     <ClCompile Include="glm\detail\dummy.cpp" />
     <ClCompile Include="glm\detail\glm.cpp" />
-    <ClCompile Include="manipulator.cpp" />
+    <ClCompile Include="src\manipulator.cpp" />
     <ClCompile Include="ImGui\imgui.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
     <ClCompile Include="ImGui\imgui_draw.cpp" />
@@ -260,19 +260,9 @@
     <ClCompile Include="ImGui\imgui_demo.cpp" />
     <ClCompile Include="ImGui\imgui_impl_dx12.cpp" />
     <ClCompile Include="ImGui\imgui_impl_win32.cpp" />
-    <ClCompile Include="UIConstructor.cpp" />
-    <ClCompile Include="OBJ_FileManager.cpp" />
-    <ClCompile Include="OBJ_Loader.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="shaders.hlsl">
-      <Filter>Assets\Shaders</Filter>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Miss.hlsl" />
-    <FxCompile Include="RayGen.hlsl" />
-    <FxCompile Include="ShadowRay.hlsl" />
+    <ClCompile Include="src\UIConstructor.cpp" />
+    <ClCompile Include="src\OBJ_FileManager.cpp" />
+    <ClCompile Include="src\OBJ_Loader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="glm\detail\func_common.inl" />
@@ -389,17 +379,21 @@
     <None Include="_NRD_SDK\Shaders\Include\NRD.hlsli" />
     <None Include="_NRD_SDK\Shaders\Include\NRDEncoding.hlsli" />
     <None Include="_NRI_SDK\Include\NRICompatibility.hlsli" />
-    <None Include="Common.hlsl" />
-    <None Include="Hit.hlsl" />
+    <None Include="shaders\Common.hlsl" />
+    <None Include="shaders\Hit.hlsl" />
+    <None Include="shaders\shaders.hlsl" />
+    <None Include="shaders\Miss.hlsl" />
+    <None Include="shaders\RayGen.hlsl" />
+    <None Include="shaders\ShadowRay.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="glm\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Object Include="teapot.obj" />
-    <Object Include="teapot_with_normals.obj" />
+    <Object Include="models\rabbit.obj" />
+    <Object Include="models\teapot.obj" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="libs\NRD.lib" />
+    <FxCompile Include="bin\x64\Debug\shaders\shaders.hlsl" />
   </ItemGroup>
 </Project>

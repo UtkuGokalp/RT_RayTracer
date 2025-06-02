@@ -1,5 +1,4 @@
 #include "Common.hlsl"
-#include "CheckersPattern.hlsli"
 
 //This structure has the same bit mapping as the "Vertex" structure on the CPU side.
 struct STriVertex

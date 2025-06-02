@@ -284,8 +284,8 @@ void D3D12HelloTriangle::LoadAssets()
         UINT compileFlags = 0;
 #endif
 
-        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders\\shaders.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders\\shaders.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
         // Define the vertex input layout.
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =        
@@ -366,7 +366,7 @@ void D3D12HelloTriangle::LoadAssets()
                 OBJFileManager ofm = OBJFileManager();
                 std::vector<objl::Vertex> modelFileVertices;
 
-                std::string path = "teapot.obj";
+                std::string path = "models\\teapot.obj";
                 bool modelFileLoaded = ofm.LoadObjFile(path, modelFileVertices, indices);
                 assert(modelFileLoaded == true);
                 //Convert from objl::Vertex to Vertex struct to complete the load.
@@ -937,11 +937,11 @@ void D3D12HelloTriangle::CreateRaytracingPipeline()
     //The raytracing pipeline contains all the shaders that may be executed during the raytracing process.
     //The codes are separated semantically to raygen, miss and hit for clarity. Any code layout can be used.
     //TODO: Check if CompileShaderLibrary can be modified to choose between compiling for debug and not
-    m_rayGenLibrary = nv_helpers_dx12::CompileShaderLibrary(L"RayGen.hlsl");
-    m_missLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Miss.hlsl");
-    m_hitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"Hit.hlsl");
+    m_rayGenLibrary = nv_helpers_dx12::CompileShaderLibrary(L"shaders\\RayGen.hlsl");
+    m_missLibrary = nv_helpers_dx12::CompileShaderLibrary(L"shaders\\Miss.hlsl");
+    m_hitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"shaders\\Hit.hlsl");
     // #DXR Extra - Another ray type
-    m_shadowLibrary = nv_helpers_dx12::CompileShaderLibrary(L"ShadowRay.hlsl");
+    m_shadowLibrary = nv_helpers_dx12::CompileShaderLibrary(L"shaders\\ShadowRay.hlsl");
 
     //Secondly, we add the libraries to the pipeline
     // In a way similar to DLLs, each library is associated with a number of
