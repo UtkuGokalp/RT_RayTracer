@@ -8,6 +8,7 @@ UIConstructor::UIConstructor()
     lightColor[2] = 1.0f;
     //This initialization is written bc currently the default rendering mode is raytracing.
     //This should be updated from the D3D12HelloTriangle.cpp, OnInit() method.
+    //This boolean was used in the beginning of the project. Either this should be removed of rasterization pipeline should be fully implemented.
     isUsingRaytracing = true;
     albedo[0] = 1.0f;
     albedo[1] = 1.0f;
