@@ -1,6 +1,6 @@
 #include "Common.hlsl"
 
-//This structure has the same bit mapping as the "Vertex" structure on the CPU side.
+//The structures has the same bit mapping as their counterpart structures on the CPU side.
 struct STriVertex
 {
     float3 position;
@@ -70,6 +70,8 @@ float3 CalculateInterpolatedWorldNormal(float3 barycentrics)
     uint vertId = 3 * PrimitiveIndex();
     //Index offsets are given in the order 1 2 0 and not 0 1 2 because the file used for debugging has the indices
     //cycled by one. Using 0 1 2 causes the normals to get incorrectly calculated
+    //The proper solution would be to properly set up an OBJ loader that will convert the indices to whatever the application
+    //expects, but I don't have time for that.
     float3 n0 = BTriVertex[indices[vertId + 1]].normal;
     float3 n1 = BTriVertex[indices[vertId + 2]].normal;
     float3 n2 = BTriVertex[indices[vertId + 0]].normal;
@@ -90,13 +92,6 @@ float3 CalculateDirectLighting(float3 hitPoint, float3 normal, float3 surfaceCol
         color += surfaceColor * light.color * totalIntensity;
     }
     return color;
-}
-
-void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
-{
-    float3 viewDir = normalize(WorldRayDirection());
-    float3 reflectionDirection = normalize(reflect(viewDir, normal));
-    CastReflectionRay(SceneBVH, hitPoint, reflectionDirection, payload);
 }
 
 float3 FresnelSchlick(float cosTheta, float3 F0)
@@ -178,6 +173,13 @@ float3 CalculatePBRShading(Material material, float3 normal, float3 cameraPositi
     return color;
 }
 
+void ReflectRay(float3 hitPoint, float3 normal, inout HitInfo payload)
+{
+    float3 viewDir = normalize(WorldRayDirection());
+    float3 reflectionDirection = normalize(reflect(viewDir, normal));
+    CastReflectionRay(SceneBVH, hitPoint, reflectionDirection, payload);
+}
+
 [shader("closesthit")]
 void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes attrib)
 {
@@ -190,7 +192,7 @@ void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes att
     float3 finalSurfaceColor = lightColor + CalculatePBRShading(material, normal, WorldRayOrigin(), hitWorldPosition);
     HitInfo reflectionPayload;
     ReflectRay(hitWorldPosition, normal, reflectionPayload);
-    float reflectivity = InstanceID() == 0 || InstanceID() == 1 ? material.reflectivity : 0.0f;
+    float reflectivity = (InstanceID() == 0 || InstanceID() == 1) ? material.reflectivity : 0.0f;
     payload.color = lerp(finalSurfaceColor, reflectionPayload.color, reflectivity);
 }
 
@@ -203,9 +205,9 @@ void PlaneClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttribute
     float3 hitWorldPosition = GetWorldHitPoint();
     //Calculate the direction towards the light from the position of the ray that hit the plane
     float3 lightDir = normalize(lights[0].position - hitWorldPosition);
-    // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer.
     
     // #DXR Extra - Simple Lighting
+    //The face normal is used for the plane instead of vertex normals because face and vertex normals are the same for plane and this was easier to implement.
     uint vertId = 3 * PrimitiveIndex();
     float3 e1 = BTriVertex[vertId + 1].position - BTriVertex[vertId + 0].position;
     float3 e2 = BTriVertex[vertId + 2].position - BTriVertex[vertId + 0].position;
@@ -224,7 +226,7 @@ void PlaneClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttribute
     {
         isShadowed = shadowPayload.isHit;
     }
-    float shadowFactor = isShadowed ? 0.3f : 1.0f;
+    float shadowFactor = isShadowed ? 0.3f : 1.0f; //Shadow factor is hardcoded here. It could be set from the UI as well.
     float multiplier = dot(normal, lightDir);
     float lightIntensity = max(0.0f, multiplier);
     float3 platformColor = float3(1.0f, 1.0f, 1.0f) * lightIntensity * shadowFactor;
