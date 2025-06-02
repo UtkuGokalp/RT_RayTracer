@@ -190,10 +190,17 @@ void ClosestHit(inout HitInfo payload, BuiltInTriangleIntersectionAttributes att
     float3 surfaceColor = material.albedo;
     float3 lightColor = CalculateDirectLighting(hitWorldPosition, normal, surfaceColor);
     float3 finalSurfaceColor = lightColor + CalculatePBRShading(material, normal, WorldRayOrigin(), hitWorldPosition);
-    HitInfo reflectionPayload;
-    ReflectRay(hitWorldPosition, normal, reflectionPayload);
-    float reflectivity = (InstanceID() == 0 || InstanceID() == 1) ? material.reflectivity : 0.0f;
-    payload.color = lerp(finalSurfaceColor, reflectionPayload.color, reflectivity);
+    //Assume the material isn't reflective.
+    float3 reflectionColor = finalSurfaceColor;
+    float reflectivity = 0.0f;
+    if (InstanceID() == 0 || InstanceID() == 1) //If the material is reflective, calculate the reflection.
+    {
+        HitInfo reflectionPayload;
+        ReflectRay(hitWorldPosition, normal, reflectionPayload);
+        reflectionColor = reflectionPayload.color;
+        reflectivity = material.reflectivity;
+    }
+    payload.color = lerp(finalSurfaceColor, reflectionColor, reflectivity);
 }
 
 // #DXR Extra: Per-Instance Data
