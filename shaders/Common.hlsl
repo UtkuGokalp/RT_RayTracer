@@ -78,8 +78,10 @@ void CastDefaultRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 
     ray.Direction = direction;
     ray.TMin = 0;
     ray.TMax = 100000;
-    //TraceRay(TLAS, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
+    //RAY_FLAG_CULL_BACK_FACING_TRIANGLES is more performant than RAY_FLAG_NONE, but the models in the project can look weird if RAY_FLAG_CULL_BACK_FACING_TRIANGLES is used.
+    //RAY_FLAG_NONE version is therefore used as the default but RAY_FLAG_CULL_BACK_FACING_TRIANGLES is included as a comment so that it is easy to enable if needed.
     TraceRay(TLAS, RAY_FLAG_NONE, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
+    //TraceRay(TLAS, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
 }
 
 void CastReflectionRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 direction, inout HitInfo payload)
@@ -90,8 +92,9 @@ void CastReflectionRay(RaytracingAccelerationStructure TLAS, float3 origin, floa
     ray.Direction = direction;
     ray.TMin = 0.001f;
     ray.TMax = 1000.0f;
+    //RAY_FLAG_NONE here causes self-reflection of rays, meaning they hit the back of the face that they already hit, then backface ray hits the front face and so on.
+    //This causes an infinite loop which eventually passes the recursion limit in the pipeline and the application crashes.
     TraceRay(TLAS, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
-    //TraceRay(TLAS, RAY_FLAG_NONE, DONT_MASK_GEOMETRY, DEFAULT_HIT_GROUP_INDEX, DEFAULT_MISS_SHADER_INDEX, 0, ray, payload);
 }
 
 void CastShadowRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 direction, inout ShadowHitInfo payload)
@@ -102,6 +105,7 @@ void CastShadowRay(RaytracingAccelerationStructure TLAS, float3 origin, float3 d
     ray.Direction = direction;
     ray.TMin = 0.01;
     ray.TMax = 100000;
+    //I honestly don't know if there is a difference between the two that might crash the app so I am keeping RAY_FLAG_CULL_BACK_FACING_TRIANGLES version as a backup here.
     //TraceRay(TLAS, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, DONT_MASK_GEOMETRY, SHADOW_HIT_GROUP_INDEX, SHADOW_MISS_SHADER_INDEX, 0, ray, payload);
     TraceRay(TLAS, RAY_FLAG_NONE, DONT_MASK_GEOMETRY, SHADOW_HIT_GROUP_INDEX, SHADOW_MISS_SHADER_INDEX, 0, ray, payload);
 }

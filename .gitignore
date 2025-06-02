@@ -363,5 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 /imgui.ini
 
-#Don't ignore the test model because it's path is hardcoded.
-!test_model.obj
+#Don't ignore the model files, which also have a .obj extension.
+!models/
+!models/*.obj

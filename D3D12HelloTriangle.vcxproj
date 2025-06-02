@@ -58,7 +58,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(ProjectDir)ImGui;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)nv_helpers_dx12;$(ProjectDir)glm;$(ProjectDir)include;$(ProjectDir)ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
@@ -90,14 +90,15 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)nv_helpers_dx12;$(ProjectDir)glm;$(ProjectDir)include;$(ProjectDir)ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -126,7 +127,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="DXRHelper.h" />
+    <ClInclude Include="include\DXRHelper.h" />
     <ClInclude Include="ffx_api\dx12\ffx_api_dx12.h" />
     <ClInclude Include="ffx_api\dx12\ffx_api_dx12.hpp" />
     <ClInclude Include="ffx_api\ffx_api.h" />
@@ -291,22 +292,22 @@
     <ClInclude Include="ImGui\imstb_rectpack.h" />
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
-    <ClInclude Include="manipulator.h" />
+    <ClInclude Include="include\manipulator.h" />
     <ClInclude Include="NRDInclude\NRI.h" />
     <ClInclude Include="nv_helpers_dx12\BottomLevelASGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\RaytracingPipelineGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\RootSignatureGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\ShaderBindingTableGenerator.h" />
     <ClInclude Include="nv_helpers_dx12\TopLevelASGenerator.h" />
-    <ClInclude Include="OBJ_FileManager.h" />
-    <ClInclude Include="OBJ_Loader.h" />
-    <ClInclude Include="UIConstructor.h" />
-    <ClInclude Include="Win32Application.h" />
-    <ClInclude Include="D3D12HelloTriangle.h" />
-    <ClInclude Include="d3dx12.h" />
-    <ClInclude Include="DXSample.h" />
-    <ClInclude Include="DXSampleHelper.h" />
-    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="include\OBJ_FileManager.h" />
+    <ClInclude Include="include\OBJ_Loader.h" />
+    <ClInclude Include="include\UIConstructor.h" />
+    <ClInclude Include="include\Win32Application.h" />
+    <ClInclude Include="include\D3D12HelloTriangle.h" />
+    <ClInclude Include="include\d3dx12.h" />
+    <ClInclude Include="include\DXSample.h" />
+    <ClInclude Include="include\DXSampleHelper.h" />
+    <ClInclude Include="include\stdafx.h" />
     <ClInclude Include="_NRD_SDK\Include\NRD.h" />
     <ClInclude Include="_NRD_SDK\Include\NRDDescs.h" />
     <ClInclude Include="_NRD_SDK\Include\NRDSettings.h" />
@@ -338,59 +339,50 @@
     <ClCompile Include="ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="ImGui\imgui_tables.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="manipulator.cpp" />
+    <ClCompile Include="src\manipulator.cpp" />
     <ClCompile Include="nv_helpers_dx12\BottomLevelASGenerator.cpp" />
     <ClCompile Include="nv_helpers_dx12\RaytracingPipelineGenerator.cpp" />
     <ClCompile Include="nv_helpers_dx12\RootSignatureGenerator.cpp" />
     <ClCompile Include="nv_helpers_dx12\ShaderBindingTableGenerator.cpp" />
     <ClCompile Include="nv_helpers_dx12\TopLevelASGenerator.cpp" />
-    <ClCompile Include="OBJ_FileManager.cpp" />
-    <ClCompile Include="OBJ_Loader.cpp" />
-    <ClCompile Include="UIConstructor.cpp" />
-    <ClCompile Include="Win32Application.cpp" />
-    <ClCompile Include="D3D12HelloTriangle.cpp" />
-    <ClCompile Include="DXSample.cpp" />
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="stdafx.cpp">
+    <ClCompile Include="src\OBJ_FileManager.cpp" />
+    <ClCompile Include="src\OBJ_Loader.cpp" />
+    <ClCompile Include="src\UIConstructor.cpp" />
+    <ClCompile Include="src\Win32Application.cpp" />
+    <ClCompile Include="src\D3D12HelloTriangle.cpp" />
+    <ClCompile Include="src\DXSample.cpp" />
+    <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders.hlsl">
-      <FileType>Document</FileType>
-      <DeploymentContent>true</DeploymentContent>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Common.hlsl">
+    <None Include="shaders\Common.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <FileType>Document</FileType>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
     </None>
-    <None Include="Hit.hlsl">
+    <None Include="shaders\Hit.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
       <FileType>Document</FileType>
     </None>
-    <None Include="Miss.hlsl">
+    <None Include="shaders\Miss.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
       <FileType>Document</FileType>
     </None>
-    <None Include="RayGen.hlsl">
+    <None Include="shaders\RayGen.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
       <FileType>Document</FileType>
     </None>
-    <None Include="ShadowRay.hlsl">
+    <None Include="shaders\ShadowRay.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
@@ -517,12 +509,20 @@
     <Text Include="glm\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Object Include="teapot.obj">
+    <Object Include="models\rabbit.obj">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </Object>
-    <Object Include="teapot_with_normals.obj">
+    <Object Include="models\teapot.obj">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </Object>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="shaders\shaders.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
