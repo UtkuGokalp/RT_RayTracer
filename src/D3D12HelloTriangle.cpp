@@ -1564,6 +1564,7 @@ void D3D12HelloTriangle::UpdateModelWithPendings()
     CreateShaderBindingTable();
     //One not so great but probably will work solution is to wait for a little bit here so that 
     //the other pieces of the code can finish what they are working on. It does not 100% guarantee that no crash will happen.
+    //This is probably the reason a flickering occurs in the release mode. The proper way is probably using fences. No time so hacky solution stays.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
