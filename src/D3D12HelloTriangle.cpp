@@ -43,7 +43,7 @@ void D3D12HelloTriangle::OnInit()
     //Setup for camera movement and rotation
     nv_helpers_dx12::CameraManip.setWindowSize(GetWidth(), GetHeight());
     nv_helpers_dx12::CameraManip.setLookat(glm::vec3(1.5f, 1.5f, 1.5f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-    LoadPipeline();
+    LoadPipeline(); //Most of the code here was already here from Microsoft's D3D12HelloTriangle sample project.
     LoadAssets();
     CheckRaytracingSupport();
     // Setup the acceleration structures (AS) for raytracing. When setting up
@@ -319,7 +319,6 @@ void D3D12HelloTriangle::LoadAssets()
 
     // Create the vertex buffer.
     {
-        // Define the geometry for a triangle.
         std::vector<Vertex> vertices;
         std::vector<UINT> indices;
 
@@ -329,36 +328,41 @@ void D3D12HelloTriangle::LoadAssets()
             {
                 //Box vertices for debugging.
                 indices = {
-                    //Top
+                    // Top face (+Y)
                     2, 7, 6,
-                    2, 3, 7,
-                    //Bottom
+                    2, 7, 3,
+
+                    // Bottom face (-Y)
                     0, 4, 5,
                     0, 5, 1,
-                    //Left
-                    0, 6, 2,
-                    0, 4, 6,
-                    //Right
-                    1, 3, 7,
-                    1, 7, 5,
-                    //Front
-                    0, 2, 3,
-                    0, 3, 1,
-                    //Back
-                    4, 7, 6,
-                    4, 5, 7
+
+                    // Left face (-X)
+                    0, 2, 6,
+                    0, 6, 4,
+
+                    // Right face (+X)
+                    1, 5, 7,
+                    1, 7, 3,
+
+                    // Front face (+Z)
+                    0, 1, 3,
+                    0, 3, 2,
+
+                    // Back face (-Z)
+                    4, 6, 7,
+                    4, 7, 5
                 };
 
                 vertices =
                 {
-                    Vertex({-1, -1,  1}),//0
-                    Vertex({ 1, -1,  1}),//1
-                    Vertex({-1,  1,  1}),//2
-                    Vertex({ 1,  1,  1}),//3
-                    Vertex({-1, -1, -1}),//4
-                    Vertex({ 1, -1, -1}),//5
-                    Vertex({-1,  1, -1}),//6
-                    Vertex({ 1,  1, -1})//7
+                    Vertex({-1, -1,  1}), //0
+                    Vertex({ 1, -1,  1}), //1
+                    Vertex({-1,  1,  1}), //2
+                    Vertex({ 1,  1,  1}), //3
+                    Vertex({-1, -1, -1}), //4
+                    Vertex({ 1, -1, -1}), //5
+                    Vertex({-1,  1, -1}), //6
+                    Vertex({ 1,  1, -1}), //7
                 };
             }
             else
@@ -411,10 +415,6 @@ void D3D12HelloTriangle::LoadAssets()
         m_modelVertexBufferView.StrideInBytes = sizeof(Vertex);
         m_modelVertexBufferView.SizeInBytes = vertexBufferSize;
 
-        CreateMengerSpongeVB();
-
-        //Initialize indices for tetrahedron.
-        //std::vector<UINT> indices = { 0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2 };
         const UINT indexBufferSizeInBytes = (UINT)indices.size() * sizeof(UINT);
 
         CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -584,11 +584,6 @@ void D3D12HelloTriangle::PopulateCommandList()
         //Render plane
         m_commandList->IASetVertexBuffers(0, 1, &m_planeBufferView);
         m_commandList->DrawInstanced(6, 1, 0, 0);
-        // #DXR Extra: Indexed Geometry
-        // In a way similar to triangle rendering, rasterize the Menger Sponge
-        //m_commandList->IASetVertexBuffers(0, 1, &m_mengerVBView);
-        //m_commandList->IASetIndexBuffer(&m_mengerIBView);
-        //m_commandList->DrawIndexedInstanced(m_mengerIndexCount, 1, 0, 0, 0);
     }
     else
     {
@@ -840,10 +835,6 @@ void D3D12HelloTriangle::CreateAccelerationStructures()
     // Build the BLAS from triangle vertex buffer
     AccelerationStructureBuffers modelBottomLevelBuffers = CreateBottomLevelAS({ { m_modelVertexBuffer.Get(), m_modelVertexCount } }, { { m_modelIndexBuffer.Get(), m_modelIndexCount } });
     AccelerationStructureBuffers planeBottomLevelBuffers = CreateBottomLevelAS({ { m_planeBuffer.Get(), 6 } });
-    // #DXR Extra: Indexed Geometry
-    // Build the bottom AS from the Menger Sponge vertex buffer
-    AccelerationStructureBuffers mengerBottomLevelBuffers = CreateBottomLevelAS({ { m_mengerVB.Get(), m_mengerVertexCount } },
-        { { m_mengerIB.Get(), m_mengerIndexCount  } });
 
     m_instances = { TLASParams(modelBottomLevelBuffers.pResult, XMMatrixIdentity(), 0, 0),
                     TLASParams(modelBottomLevelBuffers.pResult, XMMatrixTranslation(-5.0f, 0.0f, 5.0f), 0, 0),
@@ -1402,65 +1393,6 @@ void D3D12HelloTriangle::CreatePerInstanceConstantBuffers()
         cb->Unmap(0, nullptr);
         i++;
     }
-}
-
-void D3D12HelloTriangle::CreateMengerSpongeVB()
-{
-    std::vector<Vertex> vertices;
-    std::vector<UINT> indices;
-    nv_helpers_dx12::GenerateMengerSponge(3, 0.75, vertices, indices);
-    {
-        const UINT mengerVBSize = (UINT)vertices.size() * sizeof(Vertex);
-        // Note: using upload heaps to transfer static data like vert buffers is not
-        // recommended. Every time the GPU needs it, the upload heap will be
-        // marshalled over. Please read up on Default Heap usage. An upload heap is
-        // used here for code simplicity and because there are very few verts to
-        // actually transfer.
-        CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        CD3DX12_RESOURCE_DESC bufferResource = CD3DX12_RESOURCE_DESC::Buffer(mengerVBSize);
-        ThrowIfFailed(m_device->CreateCommittedResource(&heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_mengerVB)));
-
-        // Copy the triangle data to the vertex buffer.
-        UINT8* pVertexDataBegin;
-        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
-        ThrowIfFailed(m_mengerVB->Map(0, &readRange, (void**)&pVertexDataBegin));
-        memcpy(pVertexDataBegin, vertices.data(), mengerVBSize);
-        m_mengerVB->Unmap(0, nullptr);
-
-        // Initialize the vertex buffer view.
-        m_mengerVBView.BufferLocation = m_mengerVB->GetGPUVirtualAddress();
-        m_mengerVBView.StrideInBytes = sizeof(Vertex);
-        m_mengerVBView.SizeInBytes = mengerVBSize;
-    }
-
-    {
-        const UINT mengerIBSize = (UINT)indices.size() * sizeof(UINT);
-
-        // Note: using upload heaps to transfer static data like vert buffers is not
-        // recommended. Every time the GPU needs it, the upload heap will be
-        // marshalled over. Please read up on Default Heap usage. An upload heap is
-        // used here for code simplicity and because there are very few verts to
-        // actually transfer.
-        CD3DX12_HEAP_PROPERTIES heapProperty = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        CD3DX12_RESOURCE_DESC bufferResource = CD3DX12_RESOURCE_DESC::Buffer(mengerIBSize);
-        ThrowIfFailed(m_device->CreateCommittedResource(
-            &heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, //
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_mengerIB)));
-
-        // Copy the triangle data to the index buffer.
-        UINT8* pIndexDataBegin;
-        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
-        ThrowIfFailed(m_mengerIB->Map(0, &readRange, (void**)&pIndexDataBegin));
-        memcpy(pIndexDataBegin, indices.data(), mengerIBSize);
-        m_mengerIB->Unmap(0, nullptr);
-
-        // Initialize the index buffer view.
-        m_mengerIBView.BufferLocation = m_mengerIB->GetGPUVirtualAddress();
-        m_mengerIBView.Format = DXGI_FORMAT_R32_UINT;
-        m_mengerIBView.SizeInBytes = mengerIBSize;
-    }
-    m_mengerIndexCount = (UINT)indices.size();
-    m_mengerVertexCount = (UINT)vertices.size();
 }
 
 void D3D12HelloTriangle::CreateDepthBuffer()

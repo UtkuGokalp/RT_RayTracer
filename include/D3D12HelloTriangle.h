@@ -52,11 +52,7 @@ private:
 	{
 		XMFLOAT3 position;
 		XMFLOAT3 normal;
-		Vertex(XMFLOAT3 position = XMFLOAT3(0.0f, 0.0f, 0.0f)) : position(position) {}
-		//The constructors below are unused. They are only for providing compatibility
-		//with DXRHelpers.h which is used when generating the randomized Menger Sponge fractal.
-		Vertex(XMFLOAT4 position, XMFLOAT4 n, XMFLOAT4 color) : position(position.x, position.y, position.z) {}
-		Vertex(XMFLOAT3 position, XMFLOAT4 color) : position(position) {}
+		Vertex(XMFLOAT3 position = XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3 normal = XMFLOAT3(0.0f, 1.0f, 0.0f)) : position(position), normal(normal) {}
 	};
 
 	void ComputeVertexNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
@@ -122,7 +118,6 @@ private:
 
 	struct TLASParams
 	{
-		//std::tuple < ComPtr<ID3D12Resource>, DirectX::XMMATRIX, UINT
 		ComPtr<ID3D12Resource> blas;
 		DirectX::XMMATRIX transformMatrix;
 		UINT hitGroupIndex;
@@ -153,9 +148,8 @@ private:
 	/// <param name="updateOnly">Whether to build TLAS from scratch or just update the existing one</param>
 	void CreateTopLevelAS(const std::vector<TLASParams> &instances, bool updateOnly = false);
 	/// <summary>
-	/// Updates the TLAS with the given instances. Used for loading new .obj files on the fly.
+	/// Updates the TLAS using the index and vertex data in the pendingVertices and pendingIndices buffers.
 	/// </summary>
-	/// <param name="newInstances"></param>
 	void UpdateModelWithPendings();
 
 	/// <summary>
@@ -209,9 +203,6 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_constHeap; //Camera buffer reference for rasterized rendering
 	uint32_t m_cameraBufferSize = 0;
 
-	// #DXR Extra - Refitting
-	uint32_t m_time = 0;
-
 	struct InstanceProperties
 	{
 		XMMATRIX objectToWorld;
@@ -250,13 +241,6 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_modelIndexBufferView;
 	UINT m_modelIndexCount;
 
-	void CreateMengerSpongeVB();
-	ComPtr<ID3D12Resource> m_mengerVB;
-	ComPtr<ID3D12Resource> m_mengerIB;
-	D3D12_VERTEX_BUFFER_VIEW m_mengerVBView;
-	D3D12_INDEX_BUFFER_VIEW m_mengerIBView;
-	UINT m_mengerVertexCount, m_mengerIndexCount;
-
 	// #DXR Extra: Depth Buffering
 	void CreateDepthBuffer();
 	ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
@@ -274,7 +258,7 @@ private:
 	bool renderUI;
 
 	//Material system
-	//A default material is added in the constructor. New materials start from index 1 unless the default material is removed.
+	//A default material is added in the constructor of the class. New materials start from index 1 unless the default material is removed.
 	std::vector<Material> materials;
 	ComPtr<ID3D12Resource> materialsBuffer;
 	void CreateMaterialsBuffer();
