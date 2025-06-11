@@ -79,7 +79,6 @@ void D3D12HelloTriangle::OnInit()
     // Command lists are created in the recording state, but there is nothing
     // to record yet. The main loop expects it to be closed, so close it now.
     ThrowIfFailed(m_commandList->Close());
-    
 }
 
 // Load the rendering pipeline dependencies.

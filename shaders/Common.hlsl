@@ -26,35 +26,6 @@ float3 GetWorldHitPoint()
     return WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
 }
 
-uint GetPixelSeedForRandomValue()
-{
-    uint2 pixelCoordinates = DispatchRaysIndex().xy; //DispatchRaysIndex(): Gets the current location within the width, height, and depth obtained with the DispatchRaysDimensions() system value intrinsic.
-    uint seed = (pixelCoordinates.x * 73856093) ^ (pixelCoordinates.y * 19349663); //Seed for random operation that will be done on this pixel. All the random operation modify the seeds themselves, so only the initial value is needed. The rest will be figured out as the shader is executed.
-    return seed;
-}
-
-//Returns a random value between 0.0f and 1.0f
-float RandomFloat(inout uint seed)
-{
-    seed = seed * 747796405 + 2891336453;
-    uint result = ((seed >> ((int)(seed >> 28) + 4)) ^ seed) * 277803737;
-    result = (result >> 22) ^ result;
-    return result / 4294967295.0f;
-}
-
-//Returns a random value between 0.0f and 1.0f
-float RandomFloatNormalDistribution(inout uint seed)
-{
-    float theta = 2 * PI * RandomFloat(seed);
-    float rho = sqrt(-2 * log(RandomFloat(seed)));
-    return rho * cos(theta);
-}
-
-float RandomFloatInRange(inout uint seed, float minInclusive, float maxInclusive)
-{
-    return lerp(minInclusive, maxInclusive, RandomFloatNormalDistribution(seed));
-}
-
 //TRACE RAY WRAPPERS
 /*
     //This is a TraceRay() call from the benchmark project. It is here as a documentation because it demonstrates how the parameters can be used in an easy-to-read way.
