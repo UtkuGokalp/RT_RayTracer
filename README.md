@@ -8,3 +8,5 @@ You need to be on at least Windows 10 version 1903 to be able to run this projec
     <li>NVIDIA RTX 20 Series or above</li>
     <li>Any Intel Arc GPU</li>
 </ul>
+
+A short video of this project can be seen from [here](https://youtu.be/4GTj2EZ1PQ8?si=uLRBuLMNLP3i4Iax)
